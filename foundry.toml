@@ -2,7 +2,15 @@
 src = 'src'
 out = 'out'
 libs = ['lib']
-remappings = ['dss-test/=lib/dss-test/src/']
+remappings = [
+    'dss-test/=lib/dss-test/src/',
+    'xdomain-dss/=lib/xdomain-dss/src/',
+    'ds-value/=lib/xdomain-dss/lib/ds-value/src/',
+    'ds-thing/=lib/xdomain-dss/lib/ds-value/lib/ds-thing/src/',
+    'ds-auth/=lib/xdomain-dss/lib/ds-value/lib/ds-thing/lib/ds-auth/src/',
+    'ds-math/=lib/xdomain-dss/lib/ds-value/lib/ds-thing/lib/ds-math/src/',
+    'ds-note/=lib/xdomain-dss/lib/ds-value/lib/ds-thing/lib/ds-note/src/'
+]
 fs_permissions = [
     { access = "read", path = "./script/input/"},
     { access = "read", path = "./out/ArbitrumDomain.sol/ArbSysOverride.json"}

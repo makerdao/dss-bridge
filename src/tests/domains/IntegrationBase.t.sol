@@ -320,7 +320,7 @@ abstract contract IntegrationBaseTest is DSSTest {
         assertEq(Vat(address(rmcd.vat())).surf(), int256(30 * RAD));
     }
 
-    function testGlobalShutdown2() public {
+    function testGlobalShutdown() public {
         assertEq(host.live(), 1);
         assertEq(mcd.vat().live(), 1);
         assertEq(pip.read(), bytes32(WAD));
