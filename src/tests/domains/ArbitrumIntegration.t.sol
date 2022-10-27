@@ -12,7 +12,7 @@ import { ArbitrumDomainGuest } from "../../domains/arbitrum/ArbitrumDomainGuest.
 contract ArbitrumIntegrationTest is IntegrationBaseTest {
 
     function setupGuestDomain() internal virtual override returns (BridgedDomain) {
-        return new ArbitrumDomain(config, "arbitrum", rootDomain);
+        return new ArbitrumDomain(config, "arbitrum-one", rootDomain);
     }
 
     function setupGuestDai() internal virtual override returns (address) {

@@ -5,8 +5,8 @@ pragma solidity ^0.8.14;
 import "forge-std/Script.sol";
 import "dss-test/domains/Domain.sol";
 
-import "./lib/XDomainDss.sol";
-import "./lib/DssBridge.sol";
+import "../src/deploy/XDomainDss.sol";
+import "../src/deploy/DssBridge.sol";
 
 // To deploy on a domain with an existing DAI + Token Bridge
 contract DeployExistingTokenBridge is Script {
@@ -18,6 +18,7 @@ contract DeployExistingTokenBridge is Script {
 
     Domain guestDomain;
     address guestAdmin;
+    string guestType;
 
     function readInput(string memory input) internal returns (string memory) {
         string memory root = vm.projectRoot();
@@ -33,17 +34,24 @@ contract DeployExistingTokenBridge is Script {
         
         guestDomain = new Domain(config, vm.envString("DEPLOY_GUEST"));
         guestAdmin = guestDomain.readConfigAddress("admin");
+        guestType = guestDomain.readConfigString("type");
 
         vm.startBroadcast();
         BridgeInstance memory bridge = DssBridge.deployOptimismHost();
 
         guestDomain.selectFork();
         DssInstance memory dss = XDomainDss.deploy(guestAdmin);
-        BridgeInstance memory bridge = DssBridge.deployOptimismGuest(
-            guestAdmin,
-            dss.daiJoin,
-            guestDomain.readConfigString("domain")
-        );
+        if (guestType == "optimism") {
+            BridgeInstance memory bridge = DssBridge.deployOptimismGuest(
+                guestAdmin,
+                dss.daiJoin,
+                guestDomain.readConfigString("domain")
+            );
+        } else if (guestType == "arbitrum") {
+            //DssBridge.deployArbitrumGuest(dss, bridge);
+        } else {
+            revert("Unknown guest type");
+        }
         vm.stopBroadcast();
     }
 

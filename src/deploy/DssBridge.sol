@@ -2,15 +2,15 @@
 
 pragma solidity ^0.8.14;
 
-import { BridgeOracle } from "../../src/BridgeOracle.sol";
-import { ClaimToken } from "../../src/ClaimToken.sol";
-import { DomainHost } from "../../src/DomainHost.sol";
-import { DomainGuest } from "../../src/DomainGuest.sol";
+import { BridgeOracle } from "../BridgeOracle.sol";
+import { ClaimToken } from "../ClaimToken.sol";
+import { DomainHost } from "../DomainHost.sol";
+import { DomainGuest } from "../DomainGuest.sol";
 
-import { OptimismDomainHost } from "../../src/domains/optimism/OptimismDomainHost.sol";
-import { OptimismDomainGuest } from "../../src/domains/optimism/OptimismDomainGuest.sol";
-import { ArbitrumDomainHost } from "../../src/domains/arbitrum/ArbitrumDomainHost.sol";
-import { ArbitrumDomainGuest } from "../../src/domains/arbitrum/ArbitrumDomainGuest.sol";
+import { OptimismDomainHost } from "../domains/optimism/OptimismDomainHost.sol";
+import { OptimismDomainGuest } from "../domains/optimism/OptimismDomainGuest.sol";
+import { ArbitrumDomainHost } from "../domains/arbitrum/ArbitrumDomainHost.sol";
+import { ArbitrumDomainGuest } from "../domains/arbitrum/ArbitrumDomainGuest.sol";
 
 struct BridgeInstance {
     BridgeOracle oracle;
