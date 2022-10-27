@@ -6,6 +6,7 @@ import "forge-std/Script.sol";
 import "dss-test/domains/Domain.sol";
 
 import "./lib/XDomainDss.sol";
+import "./lib/DssBridge.sol";
 
 // To deploy on a domain with an existing DAI + Token Bridge
 contract DeployExistingTokenBridge is Script {
@@ -34,7 +35,15 @@ contract DeployExistingTokenBridge is Script {
         guestAdmin = guestDomain.readConfigAddress("admin");
 
         vm.startBroadcast();
+        BridgeInstance memory bridge = DssBridge.deployOptimismHost();
+
+        guestDomain.selectFork();
         DssInstance memory dss = XDomainDss.deploy(guestAdmin);
+        BridgeInstance memory bridge = DssBridge.deployOptimismGuest(
+            guestAdmin,
+            dss.daiJoin,
+            guestDomain.readConfigString("domain")
+        );
         vm.stopBroadcast();
     }
 

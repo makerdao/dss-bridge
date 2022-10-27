@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.14;
 
-import { Vm } from "forge-std/Vm.sol";
 import { Cure } from "xdomain-dss/Cure.sol";
 import { Dai } from "xdomain-dss/Dai.sol";
 import { DaiJoin } from "xdomain-dss/DaiJoin.sol";
@@ -37,7 +36,6 @@ library XDomainDss {
     }
 
     function deploy(address owner) internal returns (DssInstance memory dss) {
-        // Deploy contracts
         dss.vat = new Vat();
         dss.dai = new Dai();
         dss.daiJoin = new DaiJoin(address(dss.vat), address(dss.dai));
