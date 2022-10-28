@@ -36,9 +36,9 @@ library XDomainDss {
         AuthLike(base).deny(address(this));
     }
 
-    function deploy(address owner) internal returns (DssInstance memory dss) {
+    function deploy(address owner, address dai) internal returns (DssInstance memory dss) {
         dss.vat = new Vat();
-        dss.dai = new Dai();
+        dss.dai = Dai(dai);
         dss.daiJoin = new DaiJoin(address(dss.vat), address(dss.dai));
         //dss.dog = new Dog();  // Needs merge in xdomain-dss
         dss.spotter = new Spotter(address(dss.vat));
@@ -48,12 +48,17 @@ library XDomainDss {
         dss.end = new End();
 
         switchOwner(address(dss.vat), owner);
-        switchOwner(address(dss.dai), owner);
         switchOwner(address(dss.spotter), owner);
         switchOwner(address(dss.pot), owner);
         switchOwner(address(dss.jug), owner);
         switchOwner(address(dss.cure), owner);
         switchOwner(address(dss.end), owner);
+    }
+
+    function deploy(address owner) internal returns (DssInstance memory dss) {
+        dss = deploy(owner, address(new Dai()));
+
+        switchOwner(address(dss.dai), owner);
     }
 
     function init(

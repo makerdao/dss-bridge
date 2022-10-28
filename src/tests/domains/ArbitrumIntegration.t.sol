@@ -9,11 +9,7 @@ import "./IntegrationBase.t.sol";
 import { ArbitrumDomainHost } from "../../domains/arbitrum/ArbitrumDomainHost.sol";
 import { ArbitrumDomainGuest } from "../../domains/arbitrum/ArbitrumDomainGuest.sol";
 
-contract ArbitrumIntegrationTest is IntegrationBaseTest {
-
-    function setupGuestDomain() internal virtual override returns (BridgedDomain) {
-        return new ArbitrumDomain(config, "arbitrum-one", rootDomain);
-    }
+abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
 
     function deployHost(address guestAddr) internal virtual override returns (BridgeInstance memory) {
         return DssBridge.deployArbitrumHost(
@@ -105,6 +101,22 @@ contract ArbitrumIntegrationTest is IntegrationBaseTest {
 
     function guestInitializeSettle(uint256 index) internal virtual override {
         ArbitrumDomainGuest(address(guest)).initializeSettle(index);
+    }
+
+}
+
+contract ArbitrumOneIntegrationTest is ArbitrumIntegrationTest {
+
+    function setupGuestDomain() internal virtual override returns (BridgedDomain) {
+        return new ArbitrumDomain(config, "arbitrum-one", rootDomain);
+    }
+
+}
+
+contract ArbitrumNovaIntegrationTest is ArbitrumIntegrationTest {
+
+    function setupGuestDomain() internal virtual override returns (BridgedDomain) {
+        return new ArbitrumDomain(config, "arbitrum-nova", rootDomain);
     }
 
 }

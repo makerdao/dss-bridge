@@ -82,7 +82,7 @@ abstract contract IntegrationBaseTest is DSSTest {
 
         // Deploy all contracts
         hostRouter = new RouterMock(address(mcd.dai()));
-        address guestAddr = computeCreateAddress(address(this), 17);
+        address guestAddr = computeCreateAddress(address(this), 15);
         BridgeInstance memory hostBridge = deployHost(guestAddr);
         host = hostBridge.host;
         escrow = guestDomain.readConfigAddress("escrow");
@@ -90,9 +90,10 @@ abstract contract IntegrationBaseTest is DSSTest {
         ilk = host.ilk();
 
         guestDomain.selectFork();
-        DssInstance memory rdss = XDomainDss.deploy(guestDomain.readConfigAddress("admin"));
-        rdss.dai = Dai(guestDomain.readConfigAddress("dai"));         // DAI is already deployed
-        rdss.daiJoin = new DaiJoin(address(rdss.vat), address(rdss.dai));
+        DssInstance memory rdss = XDomainDss.deploy(
+            guestDomain.readConfigAddress("admin"),
+            guestDomain.readConfigAddress("dai")
+        );
         guestRouter = new RouterMock(address(rdss.dai));
         BridgeInstance memory guestBridge = deployGuest(rdss, address(hostBridge.host));
         guest = guestBridge.guest;
