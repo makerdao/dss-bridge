@@ -58,7 +58,6 @@ library DssBridge {
         bridge.oracle = new BridgeOracle(address(bridge.host));
 
         switchOwner(address(bridge.host), owner);
-        switchOwner(address(bridge.oracle), owner);
     }
 
     function deployOptimismGuest(
@@ -103,7 +102,6 @@ library DssBridge {
         bridge.oracle = new BridgeOracle(address(bridge.host));
 
         switchOwner(address(bridge.host), owner);
-        switchOwner(address(bridge.oracle), owner);
     }
 
     function deployArbitrumGuest(
@@ -131,7 +129,8 @@ library DssBridge {
     function initHost(
         DssInstance memory dss,
         BridgeInstance memory bridge,
-        address escrow
+        address escrow,
+        uint256 debtCeiling
     ) internal {
         bytes32 ilk = bridge.host.ilk();
         bridge.host.file("vow", address(dss.vow));
@@ -143,6 +142,7 @@ library DssBridge {
         dss.spotter.file(ilk, "pip", address(bridge.oracle));
         dss.spotter.file(ilk, "mat", 10 ** 27);
         dss.spotter.poke(ilk);
+        dss.vat.file(ilk, "line", debtCeiling);
         dss.cure.lift(address(bridge.host));
     }
 

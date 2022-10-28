@@ -38,10 +38,6 @@ contract BridgeOracle {
     uint256 constant WAD = 10 ** 18;
     uint256 constant RAY = 10 ** 27;
 
-    // --- Events ---
-    event Rely(address indexed usr);
-    event Deny(address indexed usr);
-
     constructor(address _host) {
         host = DomainHostLike(_host);
         vat = host.vat();

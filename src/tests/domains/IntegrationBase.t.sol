@@ -82,7 +82,7 @@ abstract contract IntegrationBaseTest is DSSTest {
 
         // Deploy all contracts
         hostRouter = new RouterMock(address(mcd.dai()));
-        address guestAddr = computeCreateAddress(address(this), 10);
+        address guestAddr = computeCreateAddress(address(this), 17);
         BridgeInstance memory hostBridge = deployHost(guestAddr);
         host = hostBridge.host;
         escrow = guestDomain.readConfigAddress("escrow");
@@ -92,9 +92,11 @@ abstract contract IntegrationBaseTest is DSSTest {
         guestDomain.selectFork();
         DssInstance memory rdss = XDomainDss.deploy(guestDomain.readConfigAddress("admin"));
         rdss.dai = Dai(guestDomain.readConfigAddress("dai"));         // DAI is already deployed
+        rdss.daiJoin = new DaiJoin(address(rdss.vat), address(rdss.dai));
         guestRouter = new RouterMock(address(rdss.dai));
         BridgeInstance memory guestBridge = deployGuest(rdss, address(hostBridge.host));
         guest = guestBridge.guest;
+        assertEq(address(guest), guestAddr);
         claimToken = guestBridge.claimToken;
 
         // Mimic the spells (Host + Guest)
@@ -114,8 +116,10 @@ abstract contract IntegrationBaseTest is DSSTest {
         DssBridge.initHost(
             dss,
             hostBridge,
-            guestDomain.readConfigAddress("escrow")
+            guestDomain.readConfigAddress("escrow"),
+            1_000_000 * RAD
         );
+        initHost();
         vm.stopPrank();
 
         guestDomain.selectFork();
@@ -125,9 +129,10 @@ abstract contract IntegrationBaseTest is DSSTest {
             rdss,
             guestBridge
         );
+        initGuest();
         vm.stopPrank();
 
-        // Set up rmcd for convenience
+        // Set up rmcd and give auth for convenience
         rmcd = new MCD();
         rmcd.loadCore({
             _vat: address(rdss.vat),
@@ -141,9 +146,13 @@ abstract contract IntegrationBaseTest is DSSTest {
             _end: address(rdss.end),
             _cure: address(rdss.cure)
         });
+        rmcd.giveAdminAccess(address(this));
+        address(guest).setWard(address(this), 1);
 
-        // Default back to host domain
+        // Default back to host domain and give auth for convenience
         rootDomain.selectFork();
+        mcd.giveAdminAccess(address(this));
+        address(host).setWard(address(this), 1);
     }
 
     function hostLift(uint256 wad) internal virtual;
