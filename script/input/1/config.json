@@ -26,9 +26,9 @@
         "arbitrum-nova": {
             "type": "arbitrum",
             "rpc": "ARB_NOVA_RPC_URL",
-            "inbox": "",
-            "arbSys": "",
-            "admin": "0x10E6593CDda8c58a1d0f14C5164B376352a55f2F",
+            "inbox": "0xc4448b71118c9071Bcb9734A0EAc55D18A153949",
+            "arbSys": "0x0000000000000000000000000000000000000064",
+            "admin": "0x467194771dAe2967Aef3ECbEDD3Bf9a310C76C65",
             "domain": "ARB-NOVA-A"
         }
     }
