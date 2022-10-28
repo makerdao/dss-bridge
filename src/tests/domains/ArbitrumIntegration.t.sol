@@ -15,24 +15,34 @@ contract ArbitrumIntegrationTest is IntegrationBaseTest {
         return new ArbitrumDomain(config, "arbitrum-one", rootDomain);
     }
 
-    function setupGuestDai() internal virtual override returns (address) {
-        // DAI is already deployed on this domain
-        return 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
-    }
-
-    function setupDomains() internal virtual override {
-        // Primary domain
-        escrow = EscrowLike(mcd.chainlog().getAddress("ARBITRUM_ESCROW"));
-        // Pre-calc the guest nonce
-        address guestAddr = address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xd6), bytes1(0x94), address(this), bytes1(0x10))))));
-        ArbitrumDomainHost _host = new ArbitrumDomainHost(
-            HOST_DOMAIN_ILK,
+    function deployHost(address guestAddr) internal virtual override returns (BridgeInstance memory) {
+        return DssBridge.deployArbitrumHost(
+            rootDomain.readConfigAddress("admin"),
+            guestDomain.readConfigBytes32("ilk"),
             address(mcd.daiJoin()),
-            address(escrow),
+            guestDomain.readConfigAddress("escrow"),
             address(hostRouter),
             address(ArbitrumDomain(address(guestDomain)).inbox()),
             guestAddr
         );
+    }
+
+    function deployGuest(
+        DssInstance memory dss,
+        address hostAddr
+    ) internal virtual override returns (BridgeInstance memory) {
+        return DssBridge.deployArbitrumGuest(
+            guestDomain.readConfigAddress("admin"),
+            guestDomain.readConfigBytes32("domain"),
+            address(dss.daiJoin),
+            address(guestRouter),
+            address(ArbitrumDomain(address(guestDomain)).arbSys()),
+            hostAddr
+        );
+    }
+
+    function initHost() internal virtual override {
+        ArbitrumDomainHost _host = ArbitrumDomainHost(address(host));
         _host.file("glLift", 1_000_000);
         _host.file("glRectify", 1_000_000);
         _host.file("glCage", 1_000_000);
@@ -40,23 +50,9 @@ contract ArbitrumIntegrationTest is IntegrationBaseTest {
         _host.file("glDeposit", 1_000_000);
         _host.file("glInitializeRegisterMint", 1_000_000);
         _host.file("glInitializeSettle", 1_000_000);
-        host = DomainHost(_host);
+    }
 
-        // Remote domain
-        guestDomain.selectFork();
-        ArbitrumDomainGuest _guest = new ArbitrumDomainGuest(
-            HOST_DOMAIN_ILK,
-            address(rmcd.daiJoin()),
-            address(claimToken),
-            address(guestRouter),
-            address(ArbitrumDomain(address(guestDomain)).arbSys()),
-            address(host)
-        );
-        assertEq(address(_guest), guestAddr, "guest address mismatch");
-        guest = DomainGuest(_guest);
-
-        // Set back to primary before returning control
-        rootDomain.selectFork();
+    function initGuest() internal virtual override {
     }
 
     function hostLift(uint256 wad) internal virtual override {

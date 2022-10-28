@@ -15,24 +15,34 @@ contract OptimismIntegrationTest is IntegrationBaseTest {
         return new OptimismDomain(config, "optimism", rootDomain);
     }
 
-    function setupGuestDai() internal virtual override returns (address) {
-        // DAI is already deployed on this domain
-        return 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
-    }
-
-    function setupDomains() internal virtual override {
-        // Primary domain
-        escrow = EscrowLike(mcd.chainlog().getAddress("OPTIMISM_ESCROW"));
-        // Pre-calc the guest nonce
-        address guestAddr = address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xd6), bytes1(0x94), address(this), bytes1(0x10))))));
-        OptimismDomainHost _host = new OptimismDomainHost(
-            HOST_DOMAIN_ILK,
+    function deployHost(address guestAddr) internal virtual override returns (BridgeInstance memory) {
+        return DssBridge.deployOptimismHost(
+            rootDomain.readConfigAddress("admin"),
+            guestDomain.readConfigBytes32("ilk"),
             address(mcd.daiJoin()),
-            address(escrow),
+            guestDomain.readConfigAddress("escrow"),
             address(hostRouter),
             address(OptimismDomain(address(guestDomain)).l1Messenger()),
             guestAddr
         );
+    }
+
+    function deployGuest(
+        DssInstance memory dss,
+        address hostAddr
+    ) internal virtual override returns (BridgeInstance memory) {
+        return DssBridge.deployOptimismGuest(
+            guestDomain.readConfigAddress("admin"),
+            guestDomain.readConfigBytes32("domain"),
+            address(dss.daiJoin),
+            address(guestRouter),
+            address(OptimismDomain(address(guestDomain)).l2Messenger()),
+            hostAddr
+        );
+    }
+
+    function initHost() internal virtual override {
+        OptimismDomainHost _host = OptimismDomainHost(address(host));
         _host.file("glLift", 1_000_000);
         _host.file("glRectify", 1_000_000);
         _host.file("glCage", 1_000_000);
@@ -40,19 +50,10 @@ contract OptimismIntegrationTest is IntegrationBaseTest {
         _host.file("glDeposit", 1_000_000);
         _host.file("glInitializeRegisterMint", 1_000_000);
         _host.file("glInitializeSettle", 1_000_000);
-        host = DomainHost(_host);
+    }
 
-        // Remote domain
-        guestDomain.selectFork();
-        OptimismDomainGuest _guest = new OptimismDomainGuest(
-            HOST_DOMAIN_ILK,
-            address(rmcd.daiJoin()),
-            address(claimToken),
-            address(guestRouter),
-            address(OptimismDomain(address(guestDomain)).l2Messenger()),
-            address(host)
-        );
-        assertEq(address(_guest), guestAddr, "guest address mismatch");
+    function initGuest() internal virtual override {
+        OptimismDomainGuest _guest = OptimismDomainGuest(address(guest));
         _guest.filegl("glRelease", 1_000_000);
         _guest.filegl("glPush", 1_000_000);
         _guest.filegl("glTell", 1_000_000);
@@ -60,10 +61,6 @@ contract OptimismIntegrationTest is IntegrationBaseTest {
         _guest.filegl("glFlush", 1_000_000);
         _guest.filegl("glInitializeRegisterMint", 1_000_000);
         _guest.filegl("glInitializeSettle", 1_000_000);
-        guest = DomainGuest(_guest);
-
-        // Set back to primary before returning control
-        rootDomain.selectFork();
     }
 
     function hostLift(uint256 wad) internal virtual override {

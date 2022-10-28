@@ -5,8 +5,8 @@ pragma solidity ^0.8.14;
 import "forge-std/Script.sol";
 import "dss-test/domains/Domain.sol";
 
-import "../src/deploy/XDomainDss.sol";
-import "../src/deploy/DssBridge.sol";
+import { XDomainDss, DssInstance } from "../src/deploy/XDomainDss.sol";
+import { DssBridge, BridgeInstance } from "../src/deploy/DssBridge.sol";
 
 // To deploy on a domain with an existing DAI + Token Bridge
 contract DeployExistingTokenBridge is Script {
@@ -36,7 +36,7 @@ contract DeployExistingTokenBridge is Script {
         guestAdmin = guestDomain.readConfigAddress("admin");
         guestType = guestDomain.readConfigString("type");
 
-        vm.startBroadcast();
+        /*vm.startBroadcast();
         BridgeInstance memory bridge = DssBridge.deployOptimismHost();
 
         guestDomain.selectFork();
@@ -52,7 +52,7 @@ contract DeployExistingTokenBridge is Script {
         } else {
             revert("Unknown guest type");
         }
-        vm.stopBroadcast();
+        vm.stopBroadcast();*/
     }
 
 }

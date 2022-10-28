@@ -13,7 +13,10 @@
             "l1Messenger": "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1",
             "l2Messenger": "0x4200000000000000000000000000000000000007",
             "admin": "0x10E6593CDda8c58a1d0f14C5164B376352a55f2F",
-            "domain": "OPT-MAIN-A"
+            "ilk": "XD-OPT-MAIN-A",
+            "domain": "OPT-MAIN-A",
+            "escrow": "0x467194771dAe2967Aef3ECbEDD3Bf9a310C76C65",
+            "dai": "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
         },
         "arbitrum-one": {
             "type": "arbitrum",
@@ -21,7 +24,10 @@
             "inbox": "0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f",
             "arbSys": "0x0000000000000000000000000000000000000064",
             "admin": "0x10E6593CDda8c58a1d0f14C5164B376352a55f2F",
-            "domain": "ARB-ONE-A"
+            "ilk": "XD-ARB-ONE-A",
+            "domain": "ARB-ONE-A",
+            "escrow": "0xA10c7CE4b876998858b1a9E12b10092229539400",
+            "dai": "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
         },
         "arbitrum-nova": {
             "type": "arbitrum",
@@ -29,7 +35,10 @@
             "inbox": "0xc4448b71118c9071Bcb9734A0EAc55D18A153949",
             "arbSys": "0x0000000000000000000000000000000000000064",
             "admin": "0x467194771dAe2967Aef3ECbEDD3Bf9a310C76C65",
-            "domain": "ARB-NOVA-A"
+            "ilk": "XD-ARB-NOVA-A",
+            "domain": "ARB-NOVA-A",
+            "escrow": "0xA2e996f0cb33575FA0E36e8f62fCd4a9b897aAd3",
+            "dai": "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
         }
     }
 }

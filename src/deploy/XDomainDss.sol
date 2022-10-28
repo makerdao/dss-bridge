@@ -20,6 +20,7 @@ struct DssInstance {
     Jug jug;
     Cure cure;
     End end;
+    address vow;
 }
 
 interface AuthLike {
@@ -55,7 +56,10 @@ library XDomainDss {
         switchOwner(address(dss.end), owner);
     }
 
-    function init(DssInstance memory dss) internal {
+    function init(
+        DssInstance memory dss,
+        uint256 endWait
+    ) internal {
         dss.vat.rely(address(dss.jug));
         //dss.vat.rely(address(dss.dog));
         dss.vat.rely(address(dss.pot));
@@ -76,6 +80,8 @@ library XDomainDss {
         dss.end.file("spot", address(dss.spotter));
         dss.end.file("cure", address(dss.cure));
         //dss.end.file("vow", address(dss.vow));
+
+        dss.end.file("wait", endWait);
 
         dss.cure.rely(address(dss.end));
     }
