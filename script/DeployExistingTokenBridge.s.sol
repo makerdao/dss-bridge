@@ -18,7 +18,10 @@ contract DeployExistingTokenBridge is Script {
 
     Domain guestDomain;
     address guestAdmin;
-    string guestType;
+    bytes32 guestType;
+
+    bytes32 constant OPTIMISM = keccak256(abi.encodePacked("optimism"));
+    bytes32 constant ARBITRUM = keccak256(abi.encodePacked("arbitrum"));
 
     function readInput(string memory input) internal returns (string memory) {
         string memory root = vm.projectRoot();
@@ -34,25 +37,75 @@ contract DeployExistingTokenBridge is Script {
         
         guestDomain = new Domain(config, vm.envString("DEPLOY_GUEST"));
         guestAdmin = guestDomain.readConfigAddress("admin");
-        guestType = guestDomain.readConfigString("type");
-
-        /*vm.startBroadcast();
-        BridgeInstance memory bridge = DssBridge.deployOptimismHost();
+        guestType = keccak256(abi.encodePacked(guestDomain.readConfigString("type")));
 
         guestDomain.selectFork();
-        DssInstance memory dss = XDomainDss.deploy(guestAdmin);
-        if (guestType == "optimism") {
-            BridgeInstance memory bridge = DssBridge.deployOptimismGuest(
-                guestAdmin,
-                dss.daiJoin,
-                guestDomain.readConfigString("domain")
+        address guestAddr = computeCreateAddress(address(this), vm.getNonce(address(this)) + 15);
+        address hostAddr;
+
+        // Host domain deploy
+        hostDomain.selectFork();
+
+        vm.startBroadcast();
+        if (guestType == OPTIMISM) {
+            BridgeInstance memory bridge = DssBridge.deployOptimismHost(
+                hostAdmin,
+                guestDomain.readConfigBytes32("ilk"),
+                hostDomain.readConfigAddress("daiJoin"),
+                guestDomain.readConfigAddress("escrow"),
+                address(0),     // TODO router support
+                guestDomain.readConfigAddress("l1Messenger"),
+                guestAddr
             );
-        } else if (guestType == "arbitrum") {
-            //DssBridge.deployArbitrumGuest(dss, bridge);
+            hostAddr = address(bridge.host);
+        } else if (guestType == ARBITRUM) {
+            BridgeInstance memory bridge = DssBridge.deployArbitrumHost(
+                hostAdmin,
+                guestDomain.readConfigBytes32("ilk"),
+                hostDomain.readConfigAddress("daiJoin"),
+                guestDomain.readConfigAddress("escrow"),
+                address(0),     // TODO router support
+                guestDomain.readConfigAddress("inbox"),
+                guestAddr
+            );
+            hostAddr = address(bridge.host);
         } else {
             revert("Unknown guest type");
         }
-        vm.stopBroadcast();*/
+        vm.stopBroadcast();
+
+        // Guest domain deploy
+        guestDomain.selectFork();
+
+        vm.startBroadcast();
+        DssInstance memory dss = XDomainDss.deploy(
+            guestAdmin,
+            guestDomain.readConfigAddress("dai")
+        );
+        if (guestType == OPTIMISM) {
+            BridgeInstance memory bridge = DssBridge.deployOptimismGuest(
+                guestAdmin,
+                guestDomain.readConfigBytes32("domain"),
+                address(dss.daiJoin),
+                address(0),     // TODO router support
+                guestDomain.readConfigAddress("l2Messenger"),
+                hostAddr
+            );
+            require(address(bridge.guest) == guestAddr, "Guest address mismatch");
+        } else if (guestType == ARBITRUM) {
+            BridgeInstance memory bridge = DssBridge.deployOptimismGuest(
+                guestAdmin,
+                guestDomain.readConfigBytes32("domain"),
+                address(dss.daiJoin),
+                address(0),     // TODO router support
+                guestDomain.readConfigAddress("arbSys"),
+                hostAddr
+            );
+            require(address(bridge.guest) == guestAddr, "Guest address mismatch");
+        } else {
+            revert("Unknown guest type");
+        }
+        vm.stopBroadcast();
     }
 
 }

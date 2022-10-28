@@ -89,6 +89,10 @@ library XDomainDss {
         dss.end.file("wait", endWait);
 
         dss.cure.rely(address(dss.end));
+
+        // daiJoin needs a vat.dai balance to match the existing dai supply
+        uint256 totalSupply = dss.dai.totalSupply();
+        dss.vat.swell(address(dss.daiJoin), int256(totalSupply));
     }
 
 }
