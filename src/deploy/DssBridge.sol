@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.14;
 
-import { DssInstance } from "./XDomainDss.sol";
+import "dss-interfaces/Interfaces.sol";
+import { DssInstance } from "dss-test/MCD.sol";
 
 import { BridgeOracle } from "../BridgeOracle.sol";
 import { ClaimToken } from "../ClaimToken.sol";
@@ -21,11 +22,6 @@ struct BridgeInstance {
     DomainHost host;
 }
 
-interface AuthLike {
-    function rely(address) external;
-    function deny(address) external;
-}
-
 interface EscrowLike {
     function approve(address, address, uint256) external;
 }
@@ -34,8 +30,8 @@ interface EscrowLike {
 library DssBridge {
 
     function switchOwner(address base, address newOwner) internal {
-        AuthLike(base).rely(newOwner);
-        AuthLike(base).deny(address(this));
+        WardsAbstract(base).rely(newOwner);
+        WardsAbstract(base).deny(address(this));
     }
 
     function deployOptimismHost(
