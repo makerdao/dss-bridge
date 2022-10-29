@@ -92,7 +92,7 @@ library XDomainDss {
 
         // daiJoin needs a vat.dai balance to match the existing dai supply
         uint256 totalSupply = dss.dai.totalSupply();
-        dss.vat.swell(address(dss.daiJoin), int256(totalSupply));
+        dss.vat.swell(address(dss.daiJoin), int256(totalSupply) * 10 ** 27);
     }
 
 }

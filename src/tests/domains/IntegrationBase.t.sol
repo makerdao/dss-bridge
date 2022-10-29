@@ -266,6 +266,9 @@ abstract contract IntegrationBaseTest is DSSTest {
         uint256 escrowDai = mcd.dai().balanceOf(escrow);
         uint256 vowDai = mcd.vat().dai(address(mcd.vow()));
         uint256 vowSin = mcd.vat().sin(address(mcd.vow()));
+        guestDomain.selectFork();
+        int256 existingSurf = Vat(address(rmcd.vat())).surf();
+        rootDomain.selectFork();
 
         // Set global DC and add 50 DAI surplus + 20 DAI debt to vow
         hostLift(100 ether);
@@ -275,12 +278,12 @@ abstract contract IntegrationBaseTest is DSSTest {
 
         assertEq(rmcd.vat().dai(address(guest)), 50 * RAD);
         assertEq(rmcd.vat().sin(address(guest)), 20 * RAD);
-        assertEq(Vat(address(rmcd.vat())).surf(), 0);
+        assertEq(Vat(address(rmcd.vat())).surf(), existingSurf);
 
         guestPush();
         assertEq(rmcd.vat().dai(address(guest)), 0);
         assertEq(rmcd.vat().sin(address(guest)), 0);
-        assertEq(Vat(address(rmcd.vat())).surf(), -int256(30 * RAD));
+        assertEq(Vat(address(rmcd.vat())).surf(), existingSurf - int256(30 * RAD));
         guestDomain.relayToHost(true);
 
         assertEq(mcd.vat().dai(address(mcd.vow())), vowDai + 30 * RAD);
@@ -292,16 +295,20 @@ abstract contract IntegrationBaseTest is DSSTest {
         uint256 escrowDai = mcd.dai().balanceOf(escrow);
         uint256 vowDai = mcd.vat().dai(address(mcd.vow()));
         uint256 vowSin = mcd.vat().sin(address(mcd.vow()));
+        guestDomain.selectFork();
+        int256 existingSurf = Vat(address(rmcd.vat())).surf();
+        rootDomain.selectFork();
 
         // Set global DC and add 20 DAI surplus + 50 DAI debt to vow
         hostLift(100 ether);
         guestDomain.relayFromHost(true);
+        
         rmcd.vat().suck(address(123), address(guest), 20 * RAD);
         rmcd.vat().suck(address(guest), address(123), 50 * RAD);
 
         assertEq(rmcd.vat().dai(address(guest)), 20 * RAD);
         assertEq(rmcd.vat().sin(address(guest)), 50 * RAD);
-        assertEq(Vat(address(rmcd.vat())).surf(), 0);
+        assertEq(Vat(address(rmcd.vat())).surf(), existingSurf);
 
         guestPush();
         guestDomain.relayToHost(true);
@@ -309,7 +316,7 @@ abstract contract IntegrationBaseTest is DSSTest {
         guestDomain.selectFork();
         assertEq(rmcd.vat().dai(address(guest)), 0);
         assertEq(rmcd.vat().sin(address(guest)), 30 * RAD);
-        assertEq(Vat(address(rmcd.vat())).surf(), 0);
+        assertEq(Vat(address(rmcd.vat())).surf(), existingSurf);
         rootDomain.selectFork();
 
         hostRectify();
@@ -318,14 +325,14 @@ abstract contract IntegrationBaseTest is DSSTest {
         assertEq(mcd.dai().balanceOf(escrow), escrowDai + 130 ether);
         guestDomain.relayFromHost(true);
 
-        assertEq(Vat(address(rmcd.vat())).surf(), int256(30 * RAD));
+        assertEq(Vat(address(rmcd.vat())).surf(), existingSurf + int256(30 * RAD));
         assertEq(rmcd.vat().dai(address(guest)), 30 * RAD);
 
         guest.heal();
 
         assertEq(rmcd.vat().dai(address(guest)), 0);
         assertEq(rmcd.vat().sin(address(guest)), 0);
-        assertEq(Vat(address(rmcd.vat())).surf(), int256(30 * RAD));
+        assertEq(Vat(address(rmcd.vat())).surf(), existingSurf + int256(30 * RAD));
     }
 
     function testGlobalShutdown() public {
@@ -471,17 +478,23 @@ abstract contract IntegrationBaseTest is DSSTest {
         mcd.dai().mint(address(this), 100 ether);
         mcd.dai().approve(address(host), 100 ether);
         uint256 escrowDai = mcd.dai().balanceOf(escrow);
+        guestDomain.selectFork();
+        int256 existingSurf = Vat(address(rmcd.vat())).surf();
+        rootDomain.selectFork();
 
         hostDeposit(address(123), 100 ether);
         assertEq(mcd.dai().balanceOf(escrow), escrowDai + 100 ether);
         guestDomain.relayFromHost(true);
 
-        assertEq(Vat(address(rmcd.vat())).surf(), int256(100 * RAD));
+        assertEq(Vat(address(rmcd.vat())).surf(), existingSurf + int256(100 * RAD));
         assertEq(rmcd.dai().balanceOf(address(123)), 100 ether);
     }
 
     function testWithdraw() public {
         uint256 escrowDai = mcd.dai().balanceOf(escrow);
+        guestDomain.selectFork();
+        int256 existingSurf = Vat(address(rmcd.vat())).surf();
+        rootDomain.selectFork();
 
         mcd.dai().mint(address(this), 100 ether);
         mcd.dai().approve(address(host), 100 ether);
@@ -492,11 +505,11 @@ abstract contract IntegrationBaseTest is DSSTest {
 
         rmcd.vat().hope(address(rmcd.daiJoin()));
         rmcd.dai().approve(address(guest), 100 ether);
-        assertEq(Vat(address(rmcd.vat())).surf(), int256(100 * RAD));
+        assertEq(Vat(address(rmcd.vat())).surf(), existingSurf + int256(100 * RAD));
         assertEq(rmcd.dai().balanceOf(address(this)), 100 ether);
 
         guestWithdraw(address(123), 100 ether);
-        assertEq(Vat(address(rmcd.vat())).surf(), 0);
+        assertEq(Vat(address(rmcd.vat())).surf(), existingSurf);
         assertEq(rmcd.dai().balanceOf(address(this)), 0);
         guestDomain.relayToHost(true);
         assertEq(mcd.dai().balanceOf(escrow), escrowDai);
