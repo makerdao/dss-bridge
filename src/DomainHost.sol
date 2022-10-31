@@ -75,13 +75,6 @@ abstract contract DomainHost {
     mapping (bytes32 => bool)    public teleports;
     Settlement[]                 public settlementQueue;
 
-    bytes32     public immutable ilk;
-    VatLike     public immutable vat;
-    DaiJoinLike public immutable daiJoin;
-    DaiLike     public immutable dai;
-    address     public immutable escrow;
-    RouterLike  public immutable router;
-
     address public vow;
     uint256 public lid;         // Local ordering id
     uint256 public rid;         // Remote ordering id
@@ -91,6 +84,13 @@ abstract contract DomainHost {
     uint256 public cure;        // The amount of unused debt [RAD]
     bool public cureReported;   // Returns true if cure has been reported by the guest
     uint256 public live;
+
+    bytes32     public immutable ilk;
+    VatLike     public immutable vat;
+    DaiJoinLike public immutable daiJoin;
+    DaiLike     public immutable dai;
+    address     public immutable escrow;
+    RouterLike  public immutable router;
 
     uint256 constant RAY = 10 ** 27;
 
