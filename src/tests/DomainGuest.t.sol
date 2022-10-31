@@ -18,7 +18,7 @@ contract EmptyDomainGuest is DomainGuest {
     bool forceIsHost = true;
     bytes public lastPayload;
 
-    constructor(bytes32 _domain, address _daiJoin, address _claimToken, address _router) DomainGuest(_domain, _daiJoin, _claimToken, _router) {}
+    constructor(address _daiJoin, address _claimToken, address _router) DomainGuest(_daiJoin, _claimToken, _router) {}
 
     function setIsHost(bool v) external {
         forceIsHost = v;
@@ -93,7 +93,7 @@ contract DomainGuestTest is DSSTest {
         router = new RouterMock(address(dai));
 
         claimToken = new ClaimToken();
-        guest = new EmptyDomainGuest(SOURCE_DOMAIN, address(daiJoin), address(claimToken), address(router));
+        guest = new EmptyDomainGuest(address(daiJoin), address(claimToken), address(router));
         guest.file("end", address(end));
 
         vat.hope(address(daiJoin));
@@ -102,7 +102,6 @@ contract DomainGuestTest is DSSTest {
     }
 
     function testConstructor() public {
-        assertEq(guest.domain(), SOURCE_DOMAIN);
         assertEq(address(guest.vat()), address(vat));
         assertEq(address(guest.daiJoin()), address(daiJoin));
         assertEq(address(guest.dai()), address(dai));

@@ -34,13 +34,12 @@ contract ArbitrumDomainGuest is DomainGuest {
     uint160 constant OFFSET = uint160(0x1111000000000000000000000000000000001111);
 
     constructor(
-        bytes32 _domain,
         address _daiJoin,
         address _claimToken,
         address _router,
         address _arbSys,
         address _host
-    ) DomainGuest(_domain, _daiJoin, _claimToken, _router) {
+    ) DomainGuest(_daiJoin, _claimToken, _router) {
         arbSys = ArbSysLike(_arbSys);
         host = _host;
     }

@@ -45,7 +45,6 @@ contract OptimismIntegrationTest is IntegrationBaseTest {
         // Remote domain
         guestDomain.selectFork();
         OptimismDomainGuest _guest = new OptimismDomainGuest(
-            HOST_DOMAIN_ILK,
             address(rmcd.daiJoin()),
             address(claimToken),
             address(guestRouter),

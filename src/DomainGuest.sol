@@ -88,7 +88,6 @@ abstract contract DomainGuest {
     uint256 public live;
     uint256 public dust;        // The dust limit for preventing spam attacks [RAD]
 
-    bytes32     public immutable domain;
     VatLike     public immutable vat;
     DaiJoinLike public immutable daiJoin;
     TokenLike   public immutable dai;
@@ -141,11 +140,10 @@ abstract contract DomainGuest {
         _;
     }
 
-    constructor(bytes32 _domain, address _daiJoin, address _claimToken, address _router) {
+    constructor(address _daiJoin, address _claimToken, address _router) {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
 
-        domain = _domain;
         daiJoin = DaiJoinLike(_daiJoin);
         vat = daiJoin.vat();
         dai = daiJoin.dai();

@@ -44,13 +44,12 @@ contract OptimismDomainGuest is DomainGuest {
     event FileGL(bytes32 indexed what, uint32 data);
 
     constructor(
-        bytes32 _domain,
         address _daiJoin,
         address _claimToken,
         address _router,
         address _l2messenger,
         address _host
-    ) DomainGuest(_domain, _daiJoin, _claimToken, _router) {
+    ) DomainGuest(_daiJoin, _claimToken, _router) {
         l2messenger = L2MessengerLike(_l2messenger);
         host = _host;
     }

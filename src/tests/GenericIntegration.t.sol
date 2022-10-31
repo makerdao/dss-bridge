@@ -87,7 +87,7 @@ contract SimpleDomainGuest is DomainGuest {
 
     DomainHost host;
 
-    constructor(bytes32 _domain, address _daiJoin, address _claimToken, address _host, address _router) DomainGuest(_domain, _daiJoin, _claimToken, _router) {
+    constructor(address _daiJoin, address _claimToken, address _host, address _router) DomainGuest(_daiJoin, _claimToken, _router) {
         host = DomainHost(_host);
     }
 
@@ -181,7 +181,7 @@ contract GenericIntegrationTest is DSSTest {
         Vat vat = new Vat();
         Dai dai = new Dai();
         DaiJoin daiJoin = new DaiJoin(address(vat), address(dai));
-        guest = new SimpleDomainGuest(DOMAIN_ILK, address(daiJoin), address(claimToken), address(host), address(0));
+        guest = new SimpleDomainGuest(address(daiJoin), address(claimToken), address(host), address(0));
         pip = new BridgeOracle(address(host));
         claimToken.rely(address(guest));
 

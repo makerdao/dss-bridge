@@ -45,7 +45,6 @@ contract ArbitrumIntegrationTest is IntegrationBaseTest {
         // Remote domain
         guestDomain.selectFork();
         ArbitrumDomainGuest _guest = new ArbitrumDomainGuest(
-            HOST_DOMAIN_ILK,
             address(rmcd.daiJoin()),
             address(claimToken),
             address(guestRouter),
