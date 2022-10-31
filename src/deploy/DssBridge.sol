@@ -29,12 +29,13 @@ interface EscrowLike {
 // Tools for deploying and setting up a dss-bridge instance
 library DssBridge {
 
-    function switchOwner(address base, address newOwner) internal {
+    function switchOwner(address base, address deployer, address newOwner) internal {
         WardsAbstract(base).rely(newOwner);
-        WardsAbstract(base).deny(address(this));
+        WardsAbstract(base).deny(deployer);
     }
 
     function deployOptimismHost(
+        address deployer,
         address owner,
         bytes32 ilk,
         address daiJoin,
@@ -53,10 +54,11 @@ library DssBridge {
         );
         bridge.oracle = new BridgeOracle(address(bridge.host));
 
-        switchOwner(address(bridge.host), owner);
+        switchOwner(address(bridge.host), deployer, owner);
     }
 
     function deployOptimismGuest(
+        address deployer,
         address owner,
         bytes32 domain,
         address daiJoin,
@@ -74,11 +76,12 @@ library DssBridge {
             host
         );
 
-        switchOwner(address(bridge.guest), owner);
-        switchOwner(address(bridge.claimToken), owner);
+        switchOwner(address(bridge.guest), deployer, owner);
+        switchOwner(address(bridge.claimToken), deployer, owner);
     }
 
     function deployArbitrumHost(
+        address deployer,
         address owner,
         bytes32 ilk,
         address daiJoin,
@@ -97,10 +100,11 @@ library DssBridge {
         );
         bridge.oracle = new BridgeOracle(address(bridge.host));
 
-        switchOwner(address(bridge.host), owner);
+        switchOwner(address(bridge.host), deployer, owner);
     }
 
     function deployArbitrumGuest(
+        address deployer,
         address owner,
         bytes32 domain,
         address daiJoin,
@@ -118,8 +122,8 @@ library DssBridge {
             host
         );
 
-        switchOwner(address(bridge.guest), owner);
-        switchOwner(address(bridge.claimToken), owner);
+        switchOwner(address(bridge.guest), deployer, owner);
+        switchOwner(address(bridge.claimToken), deployer, owner);
     }
 
     function initHost(

@@ -93,6 +93,7 @@ abstract contract IntegrationBaseTest is DSSTest {
 
         guestDomain.selectFork();
         rdss = XDomainDss.deploy(
+            address(this),
             guestDomain.readConfigAddress("admin"),
             guestDomain.readConfigAddress("dai")
         );

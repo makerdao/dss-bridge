@@ -17,12 +17,12 @@ import { Vat } from "xdomain-dss/Vat.sol";
 // Tools for deploying and setting up an xdomain-dss instance
 library XDomainDss {
 
-    function switchOwner(address base, address newOwner) internal {
+    function switchOwner(address base, address deployer, address newOwner) internal {
         WardsAbstract(base).rely(newOwner);
-        WardsAbstract(base).deny(address(this));
+        WardsAbstract(base).deny(deployer);
     }
 
-    function deploy(address owner, address dai) internal returns (DssInstance memory dss) {
+    function deploy(address deployer, address owner, address dai) internal returns (DssInstance memory dss) {
         dss.vat = VatAbstract(address(new Vat()));
         dss.dai = DaiAbstract(address(Dai(dai)));
         dss.daiJoin = DaiJoinAbstract(address(new DaiJoin(address(dss.vat), address(dss.dai))));
@@ -33,18 +33,18 @@ library XDomainDss {
         dss.cure = CureAbstract(address(new Cure()));
         dss.end = EndAbstract(address(new End()));
 
-        switchOwner(address(dss.vat), owner);
-        switchOwner(address(dss.spotter), owner);
-        switchOwner(address(dss.pot), owner);
-        switchOwner(address(dss.jug), owner);
-        switchOwner(address(dss.cure), owner);
-        switchOwner(address(dss.end), owner);
+        switchOwner(address(dss.vat), deployer, owner);
+        switchOwner(address(dss.spotter), deployer, owner);
+        switchOwner(address(dss.pot), deployer, owner);
+        switchOwner(address(dss.jug), deployer, owner);
+        switchOwner(address(dss.cure), deployer, owner);
+        switchOwner(address(dss.end), deployer, owner);
     }
 
-    function deploy(address owner) internal returns (DssInstance memory dss) {
-        dss = deploy(owner, address(new Dai()));
+    function deploy(address deployer, address owner) internal returns (DssInstance memory dss) {
+        dss = deploy(deployer, owner, address(new Dai()));
 
-        switchOwner(address(dss.dai), owner);
+        switchOwner(address(dss.dai), deployer, owner);
     }
 
     function init(

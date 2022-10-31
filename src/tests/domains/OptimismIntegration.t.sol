@@ -17,6 +17,7 @@ contract OptimismIntegrationTest is IntegrationBaseTest {
 
     function deployHost(address guestAddr) internal virtual override returns (BridgeInstance memory) {
         return DssBridge.deployOptimismHost(
+            address(this),
             rootDomain.readConfigAddress("admin"),
             guestDomain.readConfigBytes32("ilk"),
             address(dss.daiJoin),
@@ -32,6 +33,7 @@ contract OptimismIntegrationTest is IntegrationBaseTest {
         address hostAddr
     ) internal virtual override returns (BridgeInstance memory) {
         return DssBridge.deployOptimismGuest(
+            address(this),
             guestDomain.readConfigAddress("admin"),
             guestDomain.readConfigBytes32("domain"),
             address(dss.daiJoin),
