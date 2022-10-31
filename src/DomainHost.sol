@@ -66,7 +66,7 @@ struct Settlement {
     bool    sent;
 }
 
-/// @title Support for xchain MCD, canonical DAI and Maker Teleport
+/// @title Support for xchain MCD, canonical DAI and Maker Teleport - host instance
 /// @dev This is just the business logic which needs concrete message-passing implementation
 abstract contract DomainHost {
 

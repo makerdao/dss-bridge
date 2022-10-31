@@ -71,7 +71,7 @@ struct Settlement {
     bool    sent;
 }
 
-/// @title Support for xchain MCD, canonical DAI and Maker Teleport - remote instance
+/// @title Support for xchain MCD, canonical DAI and Maker Teleport - guest instance
 /// @dev This is just the business logic which needs concrete message-passing implementation
 abstract contract DomainGuest {
     
