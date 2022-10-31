@@ -162,7 +162,9 @@ abstract contract DomainHost {
         require((y = int256(x)) >= 0, ARITHMETIC_ERROR);
     }
     function _divup(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        z = (x + y - 1) / y;
+        unchecked {
+            z = x != 0 ? ((x - 1) / y) + 1 : 0;
+        }
     }
 
     // --- Administration ---
