@@ -89,6 +89,39 @@ contract ArbitrumDomainHost is DomainHost {
         return usr == bridge && guest == OutboxLike(BridgeLike(bridge).activeOutbox()).l2ToL1Sender();
     }
 
+    function deposit(
+        address to,
+        uint256 amount,
+        uint256 maxSubmissionCost,
+        uint256 maxGas,
+        uint256 gasPriceBid
+    ) public payable {
+        inbox.createRetryableTicket{value: msg.value}(
+            guest,
+            0, // we always assume that l2CallValue = 0
+            maxSubmissionCost,
+            msg.sender,
+            msg.sender,
+            maxGas,
+            gasPriceBid,
+            _deposit(to, amount)
+        );
+    }
+    function deposit(
+        address to,
+        uint256 amount,
+        uint256 maxSubmissionCost,
+        uint256 gasPriceBid
+    ) external payable {
+        deposit(
+            to,
+            amount,
+            maxSubmissionCost,
+            glDeposit,
+            gasPriceBid
+        );
+    }
+
     function lift(
         uint256 wad,
         uint256 maxSubmissionCost,
@@ -202,39 +235,6 @@ contract ArbitrumDomainHost is DomainHost {
             wad,
             maxSubmissionCost,
             glExit,
-            gasPriceBid
-        );
-    }
-
-    function deposit(
-        address to,
-        uint256 amount,
-        uint256 maxSubmissionCost,
-        uint256 maxGas,
-        uint256 gasPriceBid
-    ) public payable {
-        inbox.createRetryableTicket{value: msg.value}(
-            guest,
-            0, // we always assume that l2CallValue = 0
-            maxSubmissionCost,
-            msg.sender,
-            msg.sender,
-            maxGas,
-            gasPriceBid,
-            _deposit(to, amount)
-        );
-    }
-    function deposit(
-        address to,
-        uint256 amount,
-        uint256 maxSubmissionCost,
-        uint256 gasPriceBid
-    ) external payable {
-        deposit(
-            to,
-            amount,
-            maxSubmissionCost,
-            glDeposit,
             gasPriceBid
         );
     }

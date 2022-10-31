@@ -175,6 +175,42 @@ abstract contract DomainHost {
         emit File(what, data);
     }
 
+    // --- Canonical DAI Support ---
+
+    /// @notice Deposit local DAI to mint remote canonical DAI
+    /// @param to The address to send the DAI to on the remote domain
+    /// @param amount The amount of DAI to deposit [WAD]
+    function _deposit(address to, uint256 amount) internal returns (bytes memory payload) {
+        require(dai.transferFrom(msg.sender, escrow, amount), "DomainHost/transfer-failed");
+
+        payload = abi.encodeWithSelector(DomainGuest.deposit.selector, to, amount);
+
+        emit Deposit(to, amount);
+    }
+
+    /// @notice Undo a deposit
+    /// @dev    Some chains do not guarantee inclusion of a transaction.
+    ///         This function allows the user to undo an exit if it is not relayed
+    ///         to the other side.
+    ///         It is up to the implementation to ensure this message was not relayed
+    ///         otherwise you open yourself up to double spends.
+    /// @param originalSender The msg.sender from the _deposit() call
+    /// @param amount The amount of DAI that was attempted to deposit [WAD]
+    function _undoDeposit(address originalSender, uint256 amount) internal {
+        require(dai.transferFrom(escrow, originalSender, amount), "DomainHost/transfer-failed");
+
+        emit UndoDeposit(originalSender, amount);
+    }
+
+    /// @notice Withdraw local DAI by burning remote canonical DAI
+    /// @param to The address to send the DAI to on the local domain
+    /// @param amount The amount of DAI to withdraw [WAD]
+    function withdraw(address to, uint256 amount) external guestOnly {
+        require(dai.transferFrom(escrow, to, amount), "DomainHost/transfer-failed");
+
+        emit Withdraw(to, amount);
+    }
+
     // --- MCD Support ---
 
     /// @notice Set the global debt ceiling for the remote domain
@@ -316,42 +352,6 @@ abstract contract DomainHost {
         vat.slip(ilk, originalSender, _int256(wad));
 
         emit UndoExit(originalSender, wad);
-    }
-
-    // --- Canonical DAI Support ---
-
-    /// @notice Deposit local DAI to mint remote canonical DAI
-    /// @param to The address to send the DAI to on the remote domain
-    /// @param amount The amount of DAI to deposit [WAD]
-    function _deposit(address to, uint256 amount) internal returns (bytes memory payload) {
-        require(dai.transferFrom(msg.sender, escrow, amount), "DomainHost/transfer-failed");
-
-        payload = abi.encodeWithSelector(DomainGuest.deposit.selector, to, amount);
-
-        emit Deposit(to, amount);
-    }
-
-    /// @notice Undo a deposit
-    /// @dev    Some chains do not guarantee inclusion of a transaction.
-    ///         This function allows the user to undo an exit if it is not relayed
-    ///         to the other side.
-    ///         It is up to the implementation to ensure this message was not relayed
-    ///         otherwise you open yourself up to double spends.
-    /// @param originalSender The msg.sender from the _deposit() call
-    /// @param amount The amount of DAI that was attempted to deposit [WAD]
-    function _undoDeposit(address originalSender, uint256 amount) internal {
-        require(dai.transferFrom(escrow, originalSender, amount), "DomainHost/transfer-failed");
-
-        emit UndoDeposit(originalSender, amount);
-    }
-
-    /// @notice Withdraw local DAI by burning remote canonical DAI
-    /// @param to The address to send the DAI to on the local domain
-    /// @param amount The amount of DAI to withdraw [WAD]
-    function withdraw(address to, uint256 amount) external guestOnly {
-        require(dai.transferFrom(escrow, to, amount), "DomainHost/transfer-failed");
-
-        emit Withdraw(to, amount);
     }
 
     // --- Maker Teleport Support ---

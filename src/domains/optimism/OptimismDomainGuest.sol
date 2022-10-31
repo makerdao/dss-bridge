@@ -71,6 +71,21 @@ contract OptimismDomainGuest is DomainGuest {
         return usr == address(l2messenger) && l2messenger.xDomainMessageSender() == host;
     }
 
+    function withdraw(address to, uint256 amount) external {
+        l2messenger.sendMessage(
+            host,
+            _withdraw(to, amount),
+            glWithdraw
+        );
+    }
+    function withdraw(address to, uint256 amount, uint32 gasLimit) external {
+        l2messenger.sendMessage(
+            host,
+            _withdraw(to, amount),
+            gasLimit
+        );
+    }
+
     function release() external {
         l2messenger.sendMessage(
             host,
@@ -112,21 +127,6 @@ contract OptimismDomainGuest is DomainGuest {
         l2messenger.sendMessage(
             host,
             _tell(),
-            gasLimit
-        );
-    }
-
-    function withdraw(address to, uint256 amount) external {
-        l2messenger.sendMessage(
-            host,
-            _withdraw(to, amount),
-            glWithdraw
-        );
-    }
-    function withdraw(address to, uint256 amount, uint32 gasLimit) external {
-        l2messenger.sendMessage(
-            host,
-            _withdraw(to, amount),
             gasLimit
         );
     }

@@ -189,6 +189,31 @@ abstract contract DomainGuest {
         emit File(what, data);
     }
 
+    // --- Canonical DAI Support ---
+
+    /// @notice Mint DAI and send to user
+    /// @param to The address to send the DAI to on the local domain
+    /// @param amount The amount of DAI to send [WAD]
+    function deposit(address to, uint256 amount) external hostOnly {
+        vat.swell(address(this), _int256(amount * RAY));
+        daiJoin.exit(to, amount);
+
+        emit Deposit(to, amount);
+    }
+
+    /// @notice Withdraw DAI by burning local canonical DAI
+    /// @param to The address to send the DAI to on the remote domain
+    /// @param amount The amount of DAI to withdraw [WAD]
+    function _withdraw(address to, uint256 amount) internal returns (bytes memory payload) {
+        require(dai.transferFrom(msg.sender, address(this), amount), "DomainGuest/transfer-failed");
+        daiJoin.join(address(this), amount);
+        vat.swell(address(this), -_int256(amount * RAY));
+
+        payload = abi.encodeWithSelector(DomainHost.withdraw.selector, to, amount);
+
+        emit Withdraw(to, amount);
+    }
+
     // --- MCD Support ---
 
     /// @notice Record changes in line and grain and update dss global debt ceiling if necessary
@@ -290,31 +315,6 @@ abstract contract DomainGuest {
     }
     function heal() external {
         vat.heal(_min(vat.dai(address(this)), vat.sin(address(this))));
-    }
-
-    // --- Canonical DAI Support ---
-
-    /// @notice Mint DAI and send to user
-    /// @param to The address to send the DAI to on the local domain
-    /// @param amount The amount of DAI to send [WAD]
-    function deposit(address to, uint256 amount) external hostOnly {
-        vat.swell(address(this), _int256(amount * RAY));
-        daiJoin.exit(to, amount);
-
-        emit Deposit(to, amount);
-    }
-
-    /// @notice Withdraw DAI by burning local canonical DAI
-    /// @param to The address to send the DAI to on the remote domain
-    /// @param amount The amount of DAI to withdraw [WAD]
-    function _withdraw(address to, uint256 amount) internal returns (bytes memory payload) {
-        require(dai.transferFrom(msg.sender, address(this), amount), "DomainGuest/transfer-failed");
-        daiJoin.join(address(this), amount);
-        vat.swell(address(this), -_int256(amount * RAY));
-
-        payload = abi.encodeWithSelector(DomainHost.withdraw.selector, to, amount);
-
-        emit Withdraw(to, amount);
     }
 
     // --- Maker Teleport Support ---

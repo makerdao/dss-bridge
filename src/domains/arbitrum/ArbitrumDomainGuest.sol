@@ -51,6 +51,13 @@ contract ArbitrumDomainGuest is DomainGuest {
         }
     }
 
+    function withdraw(address to, uint256 amount) external {
+        arbSys.sendTxToL1(
+            host,
+            _withdraw(to, amount)
+        );
+    }
+
     function release() external {
         arbSys.sendTxToL1(
             host,
@@ -69,13 +76,6 @@ contract ArbitrumDomainGuest is DomainGuest {
         arbSys.sendTxToL1(
             host,
             _tell()
-        );
-    }
-
-    function withdraw(address to, uint256 amount) external {
-        arbSys.sendTxToL1(
-            host,
-            _withdraw(to, amount)
         );
     }
 

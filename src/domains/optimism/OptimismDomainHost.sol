@@ -71,6 +71,21 @@ contract OptimismDomainHost is DomainHost {
         return usr == address(l1messenger) && l1messenger.xDomainMessageSender() == guest;
     }
 
+    function deposit(address to, uint256 amount) external {
+        l1messenger.sendMessage(
+            guest,
+            _deposit(to, amount),
+            glDeposit
+        );
+    }
+    function deposit(address to, uint256 amount, uint32 gasLimit) external {
+        l1messenger.sendMessage(
+            guest,
+            _deposit(to, amount),
+            gasLimit
+        );
+    }
+
     function lift(uint256 wad) external {
         l1messenger.sendMessage(
             guest,
@@ -127,21 +142,6 @@ contract OptimismDomainHost is DomainHost {
         l1messenger.sendMessage(
             guest,
             _exit(usr, wad),
-            gasLimit
-        );
-    }
-
-    function deposit(address to, uint256 amount) external {
-        l1messenger.sendMessage(
-            guest,
-            _deposit(to, amount),
-            glDeposit
-        );
-    }
-    function deposit(address to, uint256 amount, uint32 gasLimit) external {
-        l1messenger.sendMessage(
-            guest,
-            _deposit(to, amount),
             gasLimit
         );
     }
