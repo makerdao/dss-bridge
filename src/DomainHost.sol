@@ -34,7 +34,6 @@ interface DomainGuestLike {
 interface VatLike {
     function live() external view returns (uint256);
     function hope(address usr) external;
-    function file(bytes32 what, uint256 data) external;
     function slip(bytes32 ilk, address usr, int256 wad) external;
     function frob(bytes32 i, address u, address v, address w, int dink, int dart) external;
     function suck(address u, address v, uint256 rad) external;
@@ -50,7 +49,6 @@ interface DaiJoinLike {
 }
 
 interface DaiLike {
-    function balanceOf(address usr) external view returns (uint256);
     function transfer(address dst, uint256 wad) external returns (bool);
     function transferFrom(address src, address dst, uint256 wad) external returns (bool);
     function approve(address usr, uint wad) external returns (bool);

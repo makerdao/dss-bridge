@@ -42,7 +42,6 @@ interface VatLike {
 }
 
 interface TokenLike {
-    function balanceOf(address usr) external view returns (uint256);
     function transferFrom(address src, address dst, uint256 wad) external returns (bool);
     function approve(address usr, uint wad) external returns (bool);
     function mint(address to, uint256 value) external;
