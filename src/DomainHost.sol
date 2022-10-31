@@ -20,7 +20,16 @@
 pragma solidity ^0.8.14;
 
 import "./TeleportGUID.sol";
-import {DomainGuest} from "./DomainGuest.sol";
+
+interface DomainGuestLike {
+    function deposit(address to, uint256 amount) external;
+    function lift(uint256 _lid, int256 dline) external;
+    function rectify(uint256 _lid, uint256 wad) external;
+    function cage(uint256 _lid) external;
+    function exit(address usr, uint256 wad) external;
+    function finalizeRegisterMint(TeleportGUID calldata teleport) external;
+    function finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external;
+}
 
 interface VatLike {
     function live() external view returns (uint256);
@@ -183,7 +192,7 @@ abstract contract DomainHost {
     function _deposit(address to, uint256 amount) internal returns (bytes memory payload) {
         require(dai.transferFrom(msg.sender, escrow, amount), "DomainHost/transfer-failed");
 
-        payload = abi.encodeWithSelector(DomainGuest.deposit.selector, to, amount);
+        payload = abi.encodeWithSelector(DomainGuestLike.deposit.selector, to, amount);
 
         emit Deposit(to, amount);
     }
@@ -234,7 +243,7 @@ abstract contract DomainHost {
 
         line = rad;
 
-        payload = abi.encodeWithSelector(DomainGuest.lift.selector, rid++, dline);
+        payload = abi.encodeWithSelector(DomainGuestLike.lift.selector, rid++, dline);
 
         emit Lift(wad);
     }
@@ -289,7 +298,7 @@ abstract contract DomainHost {
         sin = 0;
         
         // Send ERC20 DAI to the remote DomainGuest
-        payload = abi.encodeWithSelector(DomainGuest.rectify.selector, rid++, wad);
+        payload = abi.encodeWithSelector(DomainGuestLike.rectify.selector, rid++, wad);
 
         emit Rectify(wad);
     }
@@ -302,7 +311,7 @@ abstract contract DomainHost {
 
         live = 0;
 
-        payload = abi.encodeWithSelector(DomainGuest.cage.selector, rid++);
+        payload = abi.encodeWithSelector(DomainGuestLike.cage.selector, rid++);
 
         emit Cage();
     }
@@ -335,7 +344,7 @@ abstract contract DomainHost {
         // Round against the user
         uint256 claimAmount = wad * (grain - _divup(cure, RAY)) / grain;
         
-        payload = abi.encodeWithSelector(DomainGuest.exit.selector, usr, claimAmount);
+        payload = abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, claimAmount);
 
         emit Exit(usr, wad, claimAmount);
     }
@@ -366,7 +375,7 @@ abstract contract DomainHost {
         // There is no issue with resending these messages as the end TeleportJoin will enforce only-once execution
         require(teleports[getGUIDHash(teleport)], "DomainHost/teleport-not-registered");
 
-        payload = abi.encodeWithSelector(DomainGuest.finalizeRegisterMint.selector, teleport);
+        payload = abi.encodeWithSelector(DomainGuestLike.finalizeRegisterMint.selector, teleport);
 
         emit InitializeRegisterMint(teleport);
     }
@@ -393,7 +402,7 @@ abstract contract DomainHost {
         require(!settlement.sent, "DomainHost/settlement-already-sent");
         settlementQueue[index].sent = true;
 
-        payload = abi.encodeWithSelector(DomainGuest.finalizeSettle.selector, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
+        payload = abi.encodeWithSelector(DomainGuestLike.finalizeSettle.selector, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
 
         emit InitializeSettle(settlement.sourceDomain, settlement.targetDomain, settlement.amount);
     }
