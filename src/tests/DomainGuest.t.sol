@@ -244,6 +244,30 @@ contract DomainGuestTest is DSSTest {
         assertEq(guest.lastPayload(), abi.encodeWithSelector(DomainHost.release.selector, 1, 50 ether));
     }
 
+    function testReleaseDust() public {
+        guest.file("dust", 100 * RAD);
+
+        // Set debt ceiling to 100 DAI
+        guest.lift(0, int256(100 * RAD));
+
+        assertEq(guest.grain(), 100 ether);
+        assertEq(guest.line(), int256(100 * RAD));
+        assertEq(vat.Line(), 100 * RAD);
+        assertEq(guest.lid(), 1);
+
+        // Lower debt ceiling to 50 DAI
+        guest.lift(1, -int256(50 * RAD));
+
+        assertEq(guest.grain(), 100 ether);
+        assertEq(guest.line(), int256(50 * RAD));
+        assertEq(vat.Line(), 50 * RAD);
+        assertEq(guest.lid(), 2);
+
+        // Amount to release is less than 100 DAI
+        vm.expectRevert("DomainGuest/dust");
+        guest.release();
+    }
+
     function testPushSurplus() public {
         guest.file("dust", 100 * RAD);
         vat.suck(address(this), address(guest), 100 * RAD);

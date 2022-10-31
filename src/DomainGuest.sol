@@ -206,7 +206,7 @@ abstract contract DomainGuest {
     /// @dev    Should be run by keeper on a regular schedule.
     function _release() internal isLive returns (bytes memory payload) {
         uint256 limit = _max(vat.Line() / RAY, _divup(vat.debt(), RAY));
-        require(grain > limit, "DomainGuest/limit-too-high");
+        require(grain >= limit + dust / RAY, "DomainGuest/dust");
         uint256 burned = grain - limit;
         grain = limit;
 
