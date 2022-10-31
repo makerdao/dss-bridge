@@ -40,7 +40,7 @@ contract DeployExistingTokenBridge is Script {
         guestType = keccak256(abi.encodePacked(guestDomain.readConfigString("type")));
 
         guestDomain.selectFork();
-        address guestAddr = computeCreateAddress(address(msg.sender), vm.getNonce(address(msg.sender)) + 15);
+        address guestAddr = computeCreateAddress(msg.sender, vm.getNonce(msg.sender) + 22);
         address hostAddr;
 
         // Host domain deploy
@@ -94,7 +94,7 @@ contract DeployExistingTokenBridge is Script {
                 guestDomain.readConfigAddress("l2Messenger"),
                 hostAddr
             );
-            //require(address(bridge.guest) == guestAddr, "Guest address mismatch");
+            require(address(bridge.guest) == guestAddr, "Guest address mismatch");
         } else if (guestType == ARBITRUM) {
             BridgeInstance memory bridge = DssBridge.deployArbitrumGuest(
                 msg.sender,
@@ -104,7 +104,7 @@ contract DeployExistingTokenBridge is Script {
                 guestDomain.readConfigAddress("arbSys"),
                 hostAddr
             );
-            //require(address(bridge.guest) == guestAddr, "Guest address mismatch");
+            require(address(bridge.guest) == guestAddr, "Guest address mismatch");
         } else {
             revert("Unknown guest type");
         }
