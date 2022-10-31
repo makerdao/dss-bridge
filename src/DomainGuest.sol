@@ -20,7 +20,15 @@
 pragma solidity ^0.8.14;
 
 import "./TeleportGUID.sol";
-import {DomainHost} from "./DomainHost.sol";
+
+interface DomainHostLike {
+    function withdraw(address to, uint256 amount) external;
+    function release(uint256 _lid, uint256 wad) external;
+    function push(uint256 _lid, int256 wad) external;
+    function tell(uint256 _lid, uint256 value) external;
+    function finalizeRegisterMint(TeleportGUID calldata teleport) external;
+    function finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external;
+}
 
 interface VatLike {
     function hope(address usr) external;
@@ -34,7 +42,6 @@ interface VatLike {
 }
 
 interface TokenLike {
-    function balanceOf(address usr) external view returns (uint256);
     function transferFrom(address src, address dst, uint256 wad) external returns (bool);
     function approve(address usr, uint wad) external returns (bool);
     function mint(address to, uint256 value) external;
@@ -64,7 +71,7 @@ struct Settlement {
     bool    sent;
 }
 
-/// @title Support for xchain MCD, canonical DAI and Maker Teleport - remote instance
+/// @title Support for xchain MCD, canonical DAI and Maker Teleport - guest instance
 /// @dev This is just the business logic which needs concrete message-passing implementation
 abstract contract DomainGuest {
     
@@ -81,7 +88,6 @@ abstract contract DomainGuest {
     uint256 public live;
     uint256 public dust;        // The dust limit for preventing spam attacks [RAD]
 
-    bytes32     public immutable domain;
     VatLike     public immutable vat;
     DaiJoinLike public immutable daiJoin;
     TokenLike   public immutable dai;
@@ -134,11 +140,10 @@ abstract contract DomainGuest {
         _;
     }
 
-    constructor(bytes32 _domain, address _daiJoin, address _claimToken, address _router) {
+    constructor(address _daiJoin, address _claimToken, address _router) {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
 
-        domain = _domain;
         daiJoin = DaiJoinLike(_daiJoin);
         vat = daiJoin.vat();
         dai = daiJoin.dai();
@@ -163,7 +168,9 @@ abstract contract DomainGuest {
         z = x >= y ? x : y;
     }
     function _divup(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        z = (x + y - 1) / y;
+        unchecked {
+            z = x != 0 ? ((x - 1) / y) + 1 : 0;
+        }
     }
 
     // --- Administration ---
@@ -189,6 +196,31 @@ abstract contract DomainGuest {
         emit File(what, data);
     }
 
+    // --- Canonical DAI Support ---
+
+    /// @notice Mint DAI and send to user
+    /// @param to The address to send the DAI to on the local domain
+    /// @param amount The amount of DAI to send [WAD]
+    function deposit(address to, uint256 amount) external hostOnly {
+        vat.swell(address(this), _int256(amount * RAY));
+        daiJoin.exit(to, amount);
+
+        emit Deposit(to, amount);
+    }
+
+    /// @notice Withdraw DAI by burning local canonical DAI
+    /// @param to The address to send the DAI to on the remote domain
+    /// @param amount The amount of DAI to withdraw [WAD]
+    function _withdraw(address to, uint256 amount) internal returns (bytes memory payload) {
+        require(dai.transferFrom(msg.sender, address(this), amount), "DomainGuest/transfer-failed");
+        daiJoin.join(address(this), amount);
+        vat.swell(address(this), -_int256(amount * RAY));
+
+        payload = abi.encodeWithSelector(DomainHostLike.withdraw.selector, to, amount);
+
+        emit Withdraw(to, amount);
+    }
+
     // --- MCD Support ---
 
     /// @notice Record changes in line and grain and update dss global debt ceiling if necessary
@@ -206,11 +238,11 @@ abstract contract DomainGuest {
     /// @dev    Should be run by keeper on a regular schedule.
     function _release() internal isLive returns (bytes memory payload) {
         uint256 limit = _max(vat.Line() / RAY, _divup(vat.debt(), RAY));
-        require(grain > limit, "DomainGuest/limit-too-high");
+        require(grain >= limit + dust / RAY, "DomainGuest/dust");
         uint256 burned = grain - limit;
         grain = limit;
 
-        payload = abi.encodeWithSelector(DomainHost.release.selector, rid++, burned);
+        payload = abi.encodeWithSelector(DomainHostLike.release.selector, rid++, burned);
 
         emit Release(burned);
     }
@@ -228,7 +260,7 @@ abstract contract DomainGuest {
 
             // Burn the DAI and unload on the other side
             vat.swell(address(this), -_int256(wad * RAY));
-            payload = abi.encodeWithSelector(DomainHost.push.selector, rid++, _int256(wad));
+            payload = abi.encodeWithSelector(DomainHostLike.push.selector, rid++, _int256(wad));
 
             emit Push(int256(wad));
         } else if (_sin >= _dai + dust) {
@@ -236,7 +268,7 @@ abstract contract DomainGuest {
             if (_dai > 0) vat.heal(_dai);
 
             int256 deficit = -_int256(_divup(_sin - _dai, RAY));    // Round up to overcharge for deficit
-            payload = abi.encodeWithSelector(DomainHost.push.selector, rid++, deficit);
+            payload = abi.encodeWithSelector(DomainHostLike.push.selector, rid++, deficit);
 
             emit Push(deficit);
         } else {
@@ -270,7 +302,7 @@ abstract contract DomainGuest {
         uint256 _grain = grain * RAY;
         uint256 cure = _grain > debt ? _grain - debt : 0;
 
-        payload = abi.encodeWithSelector(DomainHost.tell.selector, rid++, cure);
+        payload = abi.encodeWithSelector(DomainHostLike.tell.selector, rid++, cure);
 
         emit Tell(cure);
     }
@@ -292,31 +324,6 @@ abstract contract DomainGuest {
         vat.heal(_min(vat.dai(address(this)), vat.sin(address(this))));
     }
 
-    // --- Canonical DAI Support ---
-
-    /// @notice Mint DAI and send to user
-    /// @param to The address to send the DAI to on the local domain
-    /// @param amount The amount of DAI to send [WAD]
-    function deposit(address to, uint256 amount) external hostOnly {
-        vat.swell(address(this), _int256(amount * RAY));
-        daiJoin.exit(to, amount);
-
-        emit Deposit(to, amount);
-    }
-
-    /// @notice Withdraw DAI by burning local canonical DAI
-    /// @param to The address to send the DAI to on the remote domain
-    /// @param amount The amount of DAI to withdraw [WAD]
-    function _withdraw(address to, uint256 amount) internal returns (bytes memory payload) {
-        require(dai.transferFrom(msg.sender, address(this), amount), "DomainGuest/transfer-failed");
-        daiJoin.join(address(this), amount);
-        vat.swell(address(this), -_int256(amount * RAY));
-
-        payload = abi.encodeWithSelector(DomainHost.withdraw.selector, to, amount);
-
-        emit Withdraw(to, amount);
-    }
-
     // --- Maker Teleport Support ---
     function registerMint(TeleportGUID calldata teleport) external auth {
         teleports[getGUIDHash(teleport)] = true;
@@ -327,7 +334,7 @@ abstract contract DomainGuest {
         // There is no issue with resending these messages as the end TeleportJoin will enforce only-once execution
         require(teleports[getGUIDHash(teleport)], "DomainGuest/teleport-not-registered");
 
-        payload = abi.encodeWithSelector(DomainHost.finalizeRegisterMint.selector, teleport);
+        payload = abi.encodeWithSelector(DomainHostLike.finalizeRegisterMint.selector, teleport);
 
         emit InitializeRegisterMint(teleport);
     }
@@ -355,7 +362,7 @@ abstract contract DomainGuest {
         require(!settlement.sent, "DomainGuest/settlement-already-sent");
         settlementQueue[index].sent = true;
 
-        payload = abi.encodeWithSelector(DomainHost.finalizeSettle.selector, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
+        payload = abi.encodeWithSelector(DomainHostLike.finalizeSettle.selector, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
 
         emit InitializeSettle(settlement.sourceDomain, settlement.targetDomain, settlement.amount);
     }

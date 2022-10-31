@@ -44,13 +44,12 @@ contract OptimismDomainGuest is DomainGuest {
     event FileGL(bytes32 indexed what, uint32 data);
 
     constructor(
-        bytes32 _domain,
         address _daiJoin,
         address _claimToken,
         address _router,
         address _l2messenger,
         address _host
-    ) DomainGuest(_domain, _daiJoin, _claimToken, _router) {
+    ) DomainGuest(_daiJoin, _claimToken, _router) {
         l2messenger = L2MessengerLike(_l2messenger);
         host = _host;
     }
@@ -69,6 +68,21 @@ contract OptimismDomainGuest is DomainGuest {
 
     function _isHost(address usr) internal override view returns (bool) {
         return usr == address(l2messenger) && l2messenger.xDomainMessageSender() == host;
+    }
+
+    function withdraw(address to, uint256 amount) external {
+        l2messenger.sendMessage(
+            host,
+            _withdraw(to, amount),
+            glWithdraw
+        );
+    }
+    function withdraw(address to, uint256 amount, uint32 gasLimit) external {
+        l2messenger.sendMessage(
+            host,
+            _withdraw(to, amount),
+            gasLimit
+        );
     }
 
     function release() external {
@@ -112,21 +126,6 @@ contract OptimismDomainGuest is DomainGuest {
         l2messenger.sendMessage(
             host,
             _tell(),
-            gasLimit
-        );
-    }
-
-    function withdraw(address to, uint256 amount) external {
-        l2messenger.sendMessage(
-            host,
-            _withdraw(to, amount),
-            glWithdraw
-        );
-    }
-    function withdraw(address to, uint256 amount, uint32 gasLimit) external {
-        l2messenger.sendMessage(
-            host,
-            _withdraw(to, amount),
             gasLimit
         );
     }

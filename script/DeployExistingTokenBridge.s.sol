@@ -89,7 +89,6 @@ contract DeployExistingTokenBridge is Script {
             BridgeInstance memory bridge = DssBridge.deployOptimismGuest(
                 msg.sender,
                 guestAdmin,
-                guestDomain.readConfigBytes32("domain"),
                 address(dss.daiJoin),
                 address(0),     // TODO router support
                 guestDomain.readConfigAddress("l2Messenger"),
@@ -97,10 +96,9 @@ contract DeployExistingTokenBridge is Script {
             );
             //require(address(bridge.guest) == guestAddr, "Guest address mismatch");
         } else if (guestType == ARBITRUM) {
-            BridgeInstance memory bridge = DssBridge.deployOptimismGuest(
+            BridgeInstance memory bridge = DssBridge.deployArbitrumGuest(
                 msg.sender,
                 guestAdmin,
-                guestDomain.readConfigBytes32("domain"),
                 address(dss.daiJoin),
                 address(0),     // TODO router support
                 guestDomain.readConfigAddress("arbSys"),

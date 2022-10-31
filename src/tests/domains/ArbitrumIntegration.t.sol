@@ -31,7 +31,6 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
         return DssBridge.deployArbitrumGuest(
             address(this),
             guestDomain.readConfigAddress("admin"),
-            guestDomain.readConfigBytes32("domain"),
             address(dss.daiJoin),
             address(guestRouter),
             address(ArbitrumDomain(address(guestDomain)).arbSys()),

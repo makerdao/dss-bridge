@@ -20,12 +20,20 @@
 pragma solidity ^0.8.14;
 
 import "./TeleportGUID.sol";
-import {DomainGuest} from "./DomainGuest.sol";
+
+interface DomainGuestLike {
+    function deposit(address to, uint256 amount) external;
+    function lift(uint256 _lid, int256 dline) external;
+    function rectify(uint256 _lid, uint256 wad) external;
+    function cage(uint256 _lid) external;
+    function exit(address usr, uint256 wad) external;
+    function finalizeRegisterMint(TeleportGUID calldata teleport) external;
+    function finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external;
+}
 
 interface VatLike {
     function live() external view returns (uint256);
     function hope(address usr) external;
-    function file(bytes32 what, uint256 data) external;
     function slip(bytes32 ilk, address usr, int256 wad) external;
     function frob(bytes32 i, address u, address v, address w, int dink, int dart) external;
     function suck(address u, address v, uint256 rad) external;
@@ -41,7 +49,6 @@ interface DaiJoinLike {
 }
 
 interface DaiLike {
-    function balanceOf(address usr) external view returns (uint256);
     function transfer(address dst, uint256 wad) external returns (bool);
     function transferFrom(address src, address dst, uint256 wad) external returns (bool);
     function approve(address usr, uint wad) external returns (bool);
@@ -59,7 +66,7 @@ struct Settlement {
     bool    sent;
 }
 
-/// @title Support for xchain MCD, canonical DAI and Maker Teleport
+/// @title Support for xchain MCD, canonical DAI and Maker Teleport - host instance
 /// @dev This is just the business logic which needs concrete message-passing implementation
 abstract contract DomainHost {
 
@@ -67,13 +74,6 @@ abstract contract DomainHost {
     mapping (address => uint256) public wards;
     mapping (bytes32 => bool)    public teleports;
     Settlement[]                 public settlementQueue;
-
-    bytes32     public immutable ilk;
-    VatLike     public immutable vat;
-    DaiJoinLike public immutable daiJoin;
-    DaiLike     public immutable dai;
-    address     public immutable escrow;
-    RouterLike  public immutable router;
 
     address public vow;
     uint256 public lid;         // Local ordering id
@@ -84,6 +84,13 @@ abstract contract DomainHost {
     uint256 public cure;        // The amount of unused debt [RAD]
     bool public cureReported;   // Returns true if cure has been reported by the guest
     uint256 public live;
+
+    bytes32     public immutable ilk;
+    VatLike     public immutable vat;
+    DaiJoinLike public immutable daiJoin;
+    DaiLike     public immutable dai;
+    address     public immutable escrow;
+    RouterLike  public immutable router;
 
     uint256 constant RAY = 10 ** 27;
 
@@ -155,7 +162,9 @@ abstract contract DomainHost {
         require((y = int256(x)) >= 0, ARITHMETIC_ERROR);
     }
     function _divup(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        z = (x + y - 1) / y;
+        unchecked {
+            z = x != 0 ? ((x - 1) / y) + 1 : 0;
+        }
     }
 
     // --- Administration ---
@@ -173,6 +182,42 @@ abstract contract DomainHost {
         if (what == "vow") vow = data;
         else revert("DomainHost/file-unrecognized-param");
         emit File(what, data);
+    }
+
+    // --- Canonical DAI Support ---
+
+    /// @notice Deposit local DAI to mint remote canonical DAI
+    /// @param to The address to send the DAI to on the remote domain
+    /// @param amount The amount of DAI to deposit [WAD]
+    function _deposit(address to, uint256 amount) internal returns (bytes memory payload) {
+        require(dai.transferFrom(msg.sender, escrow, amount), "DomainHost/transfer-failed");
+
+        payload = abi.encodeWithSelector(DomainGuestLike.deposit.selector, to, amount);
+
+        emit Deposit(to, amount);
+    }
+
+    /// @notice Undo a deposit
+    /// @dev    Some chains do not guarantee inclusion of a transaction.
+    ///         This function allows the user to undo an exit if it is not relayed
+    ///         to the other side.
+    ///         It is up to the implementation to ensure this message was not relayed
+    ///         otherwise you open yourself up to double spends.
+    /// @param originalSender The msg.sender from the _deposit() call
+    /// @param amount The amount of DAI that was attempted to deposit [WAD]
+    function _undoDeposit(address originalSender, uint256 amount) internal {
+        require(dai.transferFrom(escrow, originalSender, amount), "DomainHost/transfer-failed");
+
+        emit UndoDeposit(originalSender, amount);
+    }
+
+    /// @notice Withdraw local DAI by burning remote canonical DAI
+    /// @param to The address to send the DAI to on the local domain
+    /// @param amount The amount of DAI to withdraw [WAD]
+    function withdraw(address to, uint256 amount) external guestOnly {
+        require(dai.transferFrom(escrow, to, amount), "DomainHost/transfer-failed");
+
+        emit Withdraw(to, amount);
     }
 
     // --- MCD Support ---
@@ -198,7 +243,7 @@ abstract contract DomainHost {
 
         line = rad;
 
-        payload = abi.encodeWithSelector(DomainGuest.lift.selector, rid++, dline);
+        payload = abi.encodeWithSelector(DomainGuestLike.lift.selector, rid++, dline);
 
         emit Lift(wad);
     }
@@ -253,7 +298,7 @@ abstract contract DomainHost {
         sin = 0;
         
         // Send ERC20 DAI to the remote DomainGuest
-        payload = abi.encodeWithSelector(DomainGuest.rectify.selector, rid++, wad);
+        payload = abi.encodeWithSelector(DomainGuestLike.rectify.selector, rid++, wad);
 
         emit Rectify(wad);
     }
@@ -266,7 +311,7 @@ abstract contract DomainHost {
 
         live = 0;
 
-        payload = abi.encodeWithSelector(DomainGuest.cage.selector, rid++);
+        payload = abi.encodeWithSelector(DomainGuestLike.cage.selector, rid++);
 
         emit Cage();
     }
@@ -299,7 +344,7 @@ abstract contract DomainHost {
         // Round against the user
         uint256 claimAmount = wad * (grain - _divup(cure, RAY)) / grain;
         
-        payload = abi.encodeWithSelector(DomainGuest.exit.selector, usr, claimAmount);
+        payload = abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, claimAmount);
 
         emit Exit(usr, wad, claimAmount);
     }
@@ -318,42 +363,6 @@ abstract contract DomainHost {
         emit UndoExit(originalSender, wad);
     }
 
-    // --- Canonical DAI Support ---
-
-    /// @notice Deposit local DAI to mint remote canonical DAI
-    /// @param to The address to send the DAI to on the remote domain
-    /// @param amount The amount of DAI to deposit [WAD]
-    function _deposit(address to, uint256 amount) internal returns (bytes memory payload) {
-        require(dai.transferFrom(msg.sender, escrow, amount), "DomainHost/transfer-failed");
-
-        payload = abi.encodeWithSelector(DomainGuest.deposit.selector, to, amount);
-
-        emit Deposit(to, amount);
-    }
-
-    /// @notice Undo a deposit
-    /// @dev    Some chains do not guarantee inclusion of a transaction.
-    ///         This function allows the user to undo an exit if it is not relayed
-    ///         to the other side.
-    ///         It is up to the implementation to ensure this message was not relayed
-    ///         otherwise you open yourself up to double spends.
-    /// @param originalSender The msg.sender from the _deposit() call
-    /// @param amount The amount of DAI that was attempted to deposit [WAD]
-    function _undoDeposit(address originalSender, uint256 amount) internal {
-        require(dai.transferFrom(escrow, originalSender, amount), "DomainHost/transfer-failed");
-
-        emit UndoDeposit(originalSender, amount);
-    }
-
-    /// @notice Withdraw local DAI by burning remote canonical DAI
-    /// @param to The address to send the DAI to on the local domain
-    /// @param amount The amount of DAI to withdraw [WAD]
-    function withdraw(address to, uint256 amount) external guestOnly {
-        require(dai.transferFrom(escrow, to, amount), "DomainHost/transfer-failed");
-
-        emit Withdraw(to, amount);
-    }
-
     // --- Maker Teleport Support ---
 
     /// @notice Finalize a teleport registration via the slow path
@@ -366,7 +375,7 @@ abstract contract DomainHost {
         // There is no issue with resending these messages as the end TeleportJoin will enforce only-once execution
         require(teleports[getGUIDHash(teleport)], "DomainHost/teleport-not-registered");
 
-        payload = abi.encodeWithSelector(DomainGuest.finalizeRegisterMint.selector, teleport);
+        payload = abi.encodeWithSelector(DomainGuestLike.finalizeRegisterMint.selector, teleport);
 
         emit InitializeRegisterMint(teleport);
     }
@@ -393,7 +402,7 @@ abstract contract DomainHost {
         require(!settlement.sent, "DomainHost/settlement-already-sent");
         settlementQueue[index].sent = true;
 
-        payload = abi.encodeWithSelector(DomainGuest.finalizeSettle.selector, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
+        payload = abi.encodeWithSelector(DomainGuestLike.finalizeSettle.selector, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
 
         emit InitializeSettle(settlement.sourceDomain, settlement.targetDomain, settlement.amount);
     }

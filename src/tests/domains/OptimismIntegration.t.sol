@@ -35,7 +35,6 @@ contract OptimismIntegrationTest is IntegrationBaseTest {
         return DssBridge.deployOptimismGuest(
             address(this),
             guestDomain.readConfigAddress("admin"),
-            guestDomain.readConfigBytes32("domain"),
             address(dss.daiJoin),
             address(guestRouter),
             address(OptimismDomain(address(guestDomain)).l2Messenger()),

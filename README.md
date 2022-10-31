@@ -16,41 +16,47 @@ Specify a new global debt ceiling for the remote domain. If the amount is an inc
 
 This will back the pre-minted DAI by `vat.gems` that represent shares to the remote domain.
 
-This will trigger a call to `DomainGuest.lift(uint256 line, uint256 minted)`.
+This will trigger a call to `DomainGuest.lift(uint256 _lid, int256 dline)`.
 
 ### `DomainGuest.release()`
 
-Permissionless function which will release ERC20 DAI in the host's escrow. It will only do this if the amount of pre-minted DAI is greater than both the current `vat.debt()` and `vat.Line()`. IE we previously lowered the global debt ceiling and if these DAI are not in use (active debt) then it is released on the host domain.
+Permissionless function which will release ERC20 DAI in the host's escrow. It will only do this if the amount of pre-minted DAI is greater than both the current `vat.debt()` and `vat.Line()` plus a dust limit. IE we previously lowered the global debt ceiling and if these DAI are not in use (active debt) then it is released on the host domain.
 
-This will trigger a call to `DomainHost.release(uint256 wad)`.
+This will trigger a call to `DomainHost.release(uint256 _lid, uint256 wad)`.
 
 ### `DomainGuest.push()`
 
-Permissionless function which will push a surplus (or deficit) to the host domain.
+Permissionless function which will push a surplus (or deficit) to the host domain if the delta is greater than the dust limit.
 
 #### Surplus
 
 In the surplus case this will exit the DAI, send it across the token bridge and put it in the host's surplus buffer.
 
-This will trigger a call to `DomainHost.surplus(uint256 wad)`.
+This will trigger a call to `DomainHost.push(uint256 _lid, int256 wad)` with `wad >= dust`.
 
 #### Deficit
 
-In the deficit case this will send a message to the host's domain informing it that the guest is insolvant and needs more DAI. The host domain will suck some DAI from the `vow` and send it back to the guest domain.
+In the deficit case this will send a message to the host's domain informing it that the guest is insolvant and needs more DAI. Due to the fact the guest could be compromised we need the Host to authorize the recapitalization operation with a call to `DomainHost.rectify()`.
 
-This will trigger a call to `DomainHost.deficit(uint256 wad)`.
+This will trigger a call to `DomainHost.push(uint256 _lid, int256 wad)` with `wad <= -dust`.
+
+### `DomainHost.rectify()`
+
+Suck some DAI from the surplus buffer and send it to the Guest to cover the bad debt.
+
+This will trigger a call to `DomainGuest.rectify(uint256 _lid, uint256 wad)`.
 
 ### `DomainHost.cage()`
 
 Trigger shutdown of the remote domain. This will initiate an `end.cage()`. If you want to gracefully shutdown over a longer period you should call `DomainHost.lift(0)` to prevent new minting.
 
-This will trigger a call to `DomainGuest.cage()`.
+This will trigger a call to `DomainGuest.cage(uint256 _lid)`.
 
-### `DomainGuest.tell(uint256 value)`
+### `DomainGuest.tell()`
 
-The `end` module will call this function to report the final debt level of this `dss` instance during global settlement. The reported value is the `cure` to report back to the host domain.
+Grabs the final debt level of this `dss` instance during global settlement. The reported value is the `cure` to report back to the host domain.
 
-This will trigger a call to `DomainHost.tell(uint256 value)`.
+This will trigger a call to `DomainHost.tell(uint256 _lid, uint256 value)`.
 
 ### `DomainHost.exit(address usr, uint256 wad)`
 

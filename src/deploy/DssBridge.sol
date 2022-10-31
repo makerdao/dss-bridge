@@ -60,7 +60,6 @@ library DssBridge {
     function deployOptimismGuest(
         address deployer,
         address owner,
-        bytes32 domain,
         address daiJoin,
         address router,
         address l2Messenger,
@@ -68,7 +67,6 @@ library DssBridge {
     ) internal returns (BridgeInstance memory bridge) {
         bridge.claimToken = new ClaimToken();
         bridge.guest = new OptimismDomainGuest(
-            domain,
             daiJoin,
             address(bridge.claimToken),
             router,
@@ -106,7 +104,6 @@ library DssBridge {
     function deployArbitrumGuest(
         address deployer,
         address owner,
-        bytes32 domain,
         address daiJoin,
         address router,
         address arbSys,
@@ -114,7 +111,6 @@ library DssBridge {
     ) internal returns (BridgeInstance memory bridge) {
         bridge.claimToken = new ClaimToken();
         bridge.guest = new ArbitrumDomainGuest(
-            domain,
             daiJoin,
             address(bridge.claimToken),
             router,

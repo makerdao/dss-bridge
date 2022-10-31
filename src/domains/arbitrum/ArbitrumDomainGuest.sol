@@ -34,13 +34,12 @@ contract ArbitrumDomainGuest is DomainGuest {
     uint160 constant OFFSET = uint160(0x1111000000000000000000000000000000001111);
 
     constructor(
-        bytes32 _domain,
         address _daiJoin,
         address _claimToken,
         address _router,
         address _arbSys,
         address _host
-    ) DomainGuest(_domain, _daiJoin, _claimToken, _router) {
+    ) DomainGuest(_daiJoin, _claimToken, _router) {
         arbSys = ArbSysLike(_arbSys);
         host = _host;
     }
@@ -49,6 +48,13 @@ contract ArbitrumDomainGuest is DomainGuest {
         unchecked {
             return usr == address(uint160(host) + OFFSET);
         }
+    }
+
+    function withdraw(address to, uint256 amount) external {
+        arbSys.sendTxToL1(
+            host,
+            _withdraw(to, amount)
+        );
     }
 
     function release() external {
@@ -69,13 +75,6 @@ contract ArbitrumDomainGuest is DomainGuest {
         arbSys.sendTxToL1(
             host,
             _tell()
-        );
-    }
-
-    function withdraw(address to, uint256 amount) external {
-        arbSys.sendTxToL1(
-            host,
-            _withdraw(to, amount)
         );
     }
 
