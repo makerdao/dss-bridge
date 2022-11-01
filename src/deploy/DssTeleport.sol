@@ -23,10 +23,18 @@ struct DssTeleportConfig {
     address[] oracleSigners;
 }
 
+struct DssTeleportDomainConfig {
+    bytes32 domain;
+    address fees;
+    address gateway;
+    uint256 debtCeiling;    // WAD
+}
+
 // Tools for deploying and setting up a dss-teleport instance
 library DssTeleport {
 
     function switchOwner(address base, address deployer, address newOwner) internal {
+        require(WardsAbstract(base).wards(deployer) == 1, "deployer-not-authed");
         WardsAbstract(base).rely(newOwner);
         WardsAbstract(base).deny(deployer);
     }
@@ -57,6 +65,13 @@ library DssTeleport {
         switchOwner(address(teleport.oracleAuth), deployer, owner);
     }
 
+    function deployLinearFee(
+        uint256 fee,
+        uint256 ttl
+    ) internal returns (TeleportFees) {
+        return new TeleportLinearFee(fee, ttl);
+    }
+
     function init(
         DssInstance memory dss,
         TeleportInstance memory teleport,
@@ -79,6 +94,15 @@ library DssTeleport {
         teleport.oracleAuth.addSigners(cfg.oracleSigners);
         //teleport.router.rely(esm);
         teleport.router.file("gateway", teleport.join.domain(), address(teleport.join));
+    }
+
+    function initDomain(
+        TeleportInstance memory teleport,
+        DssTeleportDomainConfig memory cfg
+    ) internal {
+        teleport.join.file("fees", cfg.domain, cfg.fees);
+        teleport.join.file("line", cfg.domain, cfg.debtCeiling);
+        teleport.router.file("gateway", cfg.domain, cfg.gateway);
     }
 
 }

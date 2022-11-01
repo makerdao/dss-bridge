@@ -3,5 +3,7 @@
     "admin": "0xBE8E3e3618f7474F8cB1d074A26afFef007E98FB",
     "ilk": "TELEPORT-A",
     "domain": "ETH-MAIN-A",
-    "parentDomain": ""
+    "parentDomain": "",
+    "fee": "100000000000000",
+    "ttl": "691200"
 }

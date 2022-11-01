@@ -22,6 +22,7 @@ struct XDomainDssConfig {
 library XDomainDss {
 
     function switchOwner(address base, address deployer, address newOwner) internal {
+        require(WardsAbstract(base).wards(deployer) == 1, "deployer-not-authed");
         WardsAbstract(base).rely(newOwner);
         WardsAbstract(base).deny(deployer);
     }

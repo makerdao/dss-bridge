@@ -28,13 +28,14 @@ interface EscrowLike {
 
 struct DssBridgeHostConfig {
     address escrow;
-    uint256 debtCeiling;
+    uint256 debtCeiling;    // RAD
 }
 
 // Tools for deploying and setting up a dss-bridge instance
 library DssBridge {
 
     function switchOwner(address base, address deployer, address newOwner) internal {
+        require(WardsAbstract(base).wards(deployer) == 1, "deployer-not-authed");
         WardsAbstract(base).rely(newOwner);
         WardsAbstract(base).deny(deployer);
     }
