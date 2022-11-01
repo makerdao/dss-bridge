@@ -4,3 +4,6 @@
 [submodule "lib/xdomain-dss"]
 	path = lib/xdomain-dss
 	url = https://github.com/makerdao/xdomain-dss
+[submodule "lib/dss-teleport"]
+	path = lib/dss-teleport
+	url = https://github.com/makerdao/dss-teleport
