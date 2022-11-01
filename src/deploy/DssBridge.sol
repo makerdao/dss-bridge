@@ -26,6 +26,11 @@ interface EscrowLike {
     function approve(address, address, uint256) external;
 }
 
+struct DssBridgeHostConfig {
+    address escrow;
+    uint256 debtCeiling;
+}
+
 // Tools for deploying and setting up a dss-bridge instance
 library DssBridge {
 
@@ -125,20 +130,19 @@ library DssBridge {
     function initHost(
         DssInstance memory dss,
         BridgeInstance memory bridge,
-        address escrow,
-        uint256 debtCeiling
+        DssBridgeHostConfig memory cfg
     ) internal {
         bytes32 ilk = bridge.host.ilk();
         bridge.host.file("vow", address(dss.vow));
         dss.vat.rely(address(bridge.host));
-        EscrowLike(escrow).approve(address(dss.dai), address(bridge.host), type(uint256).max);
+        EscrowLike(cfg.escrow).approve(address(dss.dai), address(bridge.host), type(uint256).max);
         dss.vat.init(ilk);
         dss.jug.init(ilk);
         dss.vat.rely(address(bridge.host));
         dss.spotter.file(ilk, "pip", address(bridge.oracle));
         dss.spotter.file(ilk, "mat", 10 ** 27);
         dss.spotter.poke(ilk);
-        dss.vat.file(ilk, "line", debtCeiling);
+        dss.vat.file(ilk, "line", cfg.debtCeiling);
         dss.cure.lift(address(bridge.host));
     }
 

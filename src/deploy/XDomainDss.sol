@@ -14,6 +14,10 @@ import { Jug } from "xdomain-dss/Jug.sol";
 import { Spotter } from "xdomain-dss/Spotter.sol";
 import { Vat } from "xdomain-dss/Vat.sol";
 
+struct XDomainDssConfig {
+    uint256 endWait;
+}
+
 // Tools for deploying and setting up an xdomain-dss instance
 library XDomainDss {
 
@@ -49,7 +53,7 @@ library XDomainDss {
 
     function init(
         DssInstance memory dss,
-        uint256 endWait
+        XDomainDssConfig memory cfg
     ) internal {
         dss.vat.rely(address(dss.jug));
         //dss.vat.rely(address(dss.dog));
@@ -72,7 +76,7 @@ library XDomainDss {
         dss.end.file("cure", address(dss.cure));
         //dss.end.file("vow", address(dss.vow));
 
-        dss.end.file("wait", endWait);
+        dss.end.file("wait", cfg.endWait);
 
         dss.cure.rely(address(dss.end));
 

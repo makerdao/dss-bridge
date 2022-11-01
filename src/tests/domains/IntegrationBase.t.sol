@@ -24,8 +24,8 @@ import { DomainGuest } from "../../DomainGuest.sol";
 import { BridgeOracle } from "../../BridgeOracle.sol";
 import { RouterMock } from "../mocks/RouterMock.sol";
 
-import { XDomainDss, DssInstance } from "../../deploy/XDomainDss.sol";
-import { DssBridge, BridgeInstance } from "../../deploy/DssBridge.sol";
+import { XDomainDss, DssInstance, XDomainDssConfig } from "../../deploy/XDomainDss.sol";
+import { DssBridge, BridgeInstance, DssBridgeHostConfig } from "../../deploy/DssBridge.sol";
 
 // TODO use actual dog when ready
 contract DogMock {
@@ -109,15 +109,19 @@ abstract contract IntegrationBaseTest is DSSTest {
         DssBridge.initHost(
             dss,
             hostBridge,
-            guestDomain.readConfigAddress("escrow"),
-            1_000_000 * RAD
+            DssBridgeHostConfig({
+                escrow: guestDomain.readConfigAddress("escrow"),
+                debtCeiling: 1_000_000 * RAD
+            })
         );
         initHost();
         vm.stopPrank();
 
         guestDomain.selectFork();
         vm.startPrank(guestDomain.readConfigAddress("admin"));
-        XDomainDss.init(rdss, 1 hours);
+        XDomainDss.init(rdss, XDomainDssConfig({
+            endWait: 1 hours
+        }));
         DssBridge.initGuest(
             rdss,
             guestBridge
