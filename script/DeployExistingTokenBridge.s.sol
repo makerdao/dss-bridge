@@ -6,6 +6,7 @@ import "forge-std/Script.sol";
 import "dss-test/domains/Domain.sol";
 
 import { XDomainDss, DssInstance } from "../src/deploy/XDomainDss.sol";
+import { DssTeleport, TeleportInstance } from "../src/deploy/DssTeleport.sol";
 import { DssBridge, BridgeInstance } from "../src/deploy/DssBridge.sol";
 
 // To deploy on a domain with an existing DAI + Token Bridge
@@ -40,7 +41,7 @@ contract DeployExistingTokenBridge is Script {
         guestType = keccak256(abi.encodePacked(guestDomain.readConfigString("type")));
 
         guestDomain.selectFork();
-        address guestAddr = computeCreateAddress(msg.sender, vm.getNonce(msg.sender) + 22);
+        address guestAddr = computeCreateAddress(msg.sender, vm.getNonce(msg.sender) + 34);
         address hostAddr;
 
         // Host domain deploy
@@ -54,7 +55,7 @@ contract DeployExistingTokenBridge is Script {
                 guestDomain.readConfigBytes32("ilk"),
                 hostDomain.readConfigAddress("daiJoin"),
                 guestDomain.readConfigAddress("escrow"),
-                address(0),     // TODO router support
+                vm.envAddress("DEPLOY_ROUTER"),
                 guestDomain.readConfigAddress("l1Messenger"),
                 guestAddr
             );
@@ -66,7 +67,7 @@ contract DeployExistingTokenBridge is Script {
                 guestDomain.readConfigBytes32("ilk"),
                 hostDomain.readConfigAddress("daiJoin"),
                 guestDomain.readConfigAddress("escrow"),
-                address(0),     // TODO router support
+                vm.envAddress("DEPLOY_ROUTER"),
                 guestDomain.readConfigAddress("inbox"),
                 guestAddr
             );
@@ -85,12 +86,20 @@ contract DeployExistingTokenBridge is Script {
             guestAdmin,
             guestDomain.readConfigAddress("dai")
         );
+        TeleportInstance memory teleport = DssTeleport.deploy(
+            msg.sender,
+            guestAdmin,
+            guestDomain.readConfigBytes32("teleportIlk"),
+            guestDomain.readConfigBytes32("domain"),
+            hostDomain.readConfigBytes32("domain"),
+            address(dss.daiJoin)
+        );
         if (guestType == OPTIMISM) {
             BridgeInstance memory bridge = DssBridge.deployOptimismGuest(
                 msg.sender,
                 guestAdmin,
                 address(dss.daiJoin),
-                address(0),     // TODO router support
+                address(teleport.router),
                 guestDomain.readConfigAddress("l2Messenger"),
                 hostAddr
             );
@@ -100,7 +109,7 @@ contract DeployExistingTokenBridge is Script {
                 msg.sender,
                 guestAdmin,
                 address(dss.daiJoin),
-                address(0),     // TODO router support
+                address(teleport.router),
                 guestDomain.readConfigAddress("arbSys"),
                 hostAddr
             );
