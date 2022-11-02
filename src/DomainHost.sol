@@ -226,17 +226,17 @@ abstract contract DomainHost {
         require(vat.live() == 1, "DomainHost/vat-not-live");
 
         uint256 rad = wad * RAY;
-        uint256 minted;
+        uint256 dlineWad;
         int256 dline = _int256(rad) - _int256(line);
 
-        if (rad > line) {
+        if (dline > 0) {
             // We are issuing new pre-minted DAI
-            minted = (rad - line) / RAY;                    // No precision loss as line is always a multiple of RAY
-            vat.slip(ilk, address(this), int256(minted));   // No need for conversion check as amt is under a RAY of full size
-            vat.frob(ilk, address(this), address(this), address(this), int256(minted), int256(minted));
-            daiJoin.exit(escrow, minted);
+            dlineWad = uint256(dline) / RAY;                    // No precision loss as line is always a multiple of RAY
+            vat.slip(ilk, address(this), int256(dlineWad));     // No need for conversion check as amt is under a RAY of full size
+            vat.frob(ilk, address(this), address(this), address(this), int256(dlineWad), int256(dlineWad));
+            daiJoin.exit(escrow, dlineWad);
 
-            grain += minted;
+            grain += dlineWad;
         }
 
         line = rad;
