@@ -114,9 +114,10 @@ abstract contract DomainHost {
     event RegisterMint(TeleportGUID teleport);
     event InitializeRegisterMint(TeleportGUID teleport);
     event FinalizeRegisterMint(TeleportGUID teleport);
-    event Settle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount);
-    event InitializeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount);
-    event FinalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount);
+    event Settle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
+    event InitializeSettle(uint256 index, bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
+    event UndoInitializeSettle(uint256 index, bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
+    event FinalizeSettle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
 
     modifier auth {
         require(wards[msg.sender] == 1, "DomainHost/not-authorized");
@@ -404,7 +405,15 @@ abstract contract DomainHost {
 
         payload = abi.encodeWithSelector(DomainGuestLike.finalizeSettle.selector, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
 
-        emit InitializeSettle(settlement.sourceDomain, settlement.targetDomain, settlement.amount);
+        emit InitializeSettle(index, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
+    }
+    function _undoInitializeSettle(uint256 index) internal {
+        require(index < settlementQueue.length, "DomainHost/settlement-not-found");
+        Settlement memory settlement = settlementQueue[index];
+        require(settlement.sent, "DomainHost/settlement-not-sent");
+        settlementQueue[index].sent = false;
+
+        emit UndoInitializeSettle(index, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
     }
     function finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external guestOnly {
         require(dai.transferFrom(escrow, address(this), amount), "DomainHost/transfer-failed");

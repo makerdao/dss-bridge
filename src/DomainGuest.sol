@@ -115,9 +115,9 @@ abstract contract DomainGuest {
     event RegisterMint(TeleportGUID teleport);
     event InitializeRegisterMint(TeleportGUID teleport);
     event FinalizeRegisterMint(TeleportGUID teleport);
-    event Settle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount);
-    event InitializeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount);
-    event FinalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount);
+    event Settle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
+    event InitializeSettle(uint256 index, bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
+    event FinalizeSettle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
 
     modifier auth {
         require(wards[msg.sender] == 1, "DomainGuest/not-authorized");
@@ -364,7 +364,7 @@ abstract contract DomainGuest {
 
         payload = abi.encodeWithSelector(DomainHostLike.finalizeSettle.selector, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
 
-        emit InitializeSettle(settlement.sourceDomain, settlement.targetDomain, settlement.amount);
+        emit InitializeSettle(index, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
     }
     function finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external hostOnly {
         vat.swell(address(this), _int256(amount * RAY));

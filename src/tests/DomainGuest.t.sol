@@ -81,9 +81,9 @@ contract DomainGuestTest is DSSTest {
     event RegisterMint(TeleportGUID teleport);
     event InitializeRegisterMint(TeleportGUID teleport);
     event FinalizeRegisterMint(TeleportGUID teleport);
-    event Settle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount);
-    event InitializeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount);
-    event FinalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount);
+    event Settle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
+    event InitializeSettle(uint256 index, bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
+    event FinalizeSettle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
 
     function postSetup() internal virtual override {
         vat = new VatMock();
@@ -560,7 +560,7 @@ contract DomainGuestTest is DSSTest {
         guest.settle(SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether);
 
         vm.expectEmit(true, true, true, true);
-        emit InitializeSettle(SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether);
+        emit InitializeSettle(0, SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether);
         guest.initializeSettle(0);
 
         assertEq(guest.settlementQueueCount(), 1);
