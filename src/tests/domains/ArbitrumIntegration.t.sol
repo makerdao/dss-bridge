@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.14;
+pragma solidity ^0.8.15;
 
 import { ArbitrumDomain } from "dss-test/domains/ArbitrumDomain.sol";
 
@@ -9,30 +9,37 @@ import "./IntegrationBase.t.sol";
 import { ArbitrumDomainHost } from "../../domains/arbitrum/ArbitrumDomainHost.sol";
 import { ArbitrumDomainGuest } from "../../domains/arbitrum/ArbitrumDomainGuest.sol";
 
-contract ArbitrumIntegrationTest is IntegrationBaseTest {
+abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
 
-    function setupGuestDomain() internal virtual override returns (BridgedDomain) {
-        return new ArbitrumDomain(config, "arbitrum", rootDomain);
-    }
-
-    function setupGuestDai() internal virtual override returns (address) {
-        // DAI is already deployed on this domain
-        return 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
-    }
-
-    function setupDomains() internal virtual override {
-        // Primary domain
-        escrow = EscrowLike(mcd.chainlog().getAddress("ARBITRUM_ESCROW"));
-        // Pre-calc the guest nonce
-        address guestAddr = address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xd6), bytes1(0x94), address(this), bytes1(0x10))))));
-        ArbitrumDomainHost _host = new ArbitrumDomainHost(
-            HOST_DOMAIN_ILK,
-            address(mcd.daiJoin()),
-            address(escrow),
-            address(hostRouter),
+    function deployHost(address guestAddr) internal virtual override returns (BridgeInstance memory) {
+        return DssBridge.deployArbitrumHost(
+            address(this),
+            hostDomain.readConfigAddress("admin"),
+            guestDomain.readConfigBytes32("ilk"),
+            address(dss.daiJoin),
+            guestDomain.readConfigAddress("escrow"),
+            address(teleport.router),
             address(ArbitrumDomain(address(guestDomain)).inbox()),
             guestAddr
         );
+    }
+
+    function deployGuest(
+        DssInstance memory dss,
+        address hostAddr
+    ) internal virtual override returns (BridgeInstance memory) {
+        return DssBridge.deployArbitrumGuest(
+            address(this),
+            guestDomain.readConfigAddress("admin"),
+            address(dss.daiJoin),
+            address(rteleport.router),
+            address(ArbitrumDomain(address(guestDomain)).arbSys()),
+            hostAddr
+        );
+    }
+
+    function initHost() internal virtual override {
+        ArbitrumDomainHost _host = ArbitrumDomainHost(address(host));
         _host.file("glLift", 1_000_000);
         _host.file("glRectify", 1_000_000);
         _host.file("glCage", 1_000_000);
@@ -40,22 +47,9 @@ contract ArbitrumIntegrationTest is IntegrationBaseTest {
         _host.file("glDeposit", 1_000_000);
         _host.file("glInitializeRegisterMint", 1_000_000);
         _host.file("glInitializeSettle", 1_000_000);
-        host = DomainHost(_host);
+    }
 
-        // Remote domain
-        guestDomain.selectFork();
-        ArbitrumDomainGuest _guest = new ArbitrumDomainGuest(
-            address(rmcd.daiJoin()),
-            address(claimToken),
-            address(guestRouter),
-            address(ArbitrumDomain(address(guestDomain)).arbSys()),
-            address(host)
-        );
-        assertEq(address(_guest), guestAddr, "guest address mismatch");
-        guest = DomainGuest(_guest);
-
-        // Set back to primary before returning control
-        rootDomain.selectFork();
+    function initGuest() internal virtual override {
     }
 
     function hostLift(uint256 wad) internal virtual override {
@@ -108,6 +102,22 @@ contract ArbitrumIntegrationTest is IntegrationBaseTest {
 
     function guestInitializeSettle(uint256 index) internal virtual override {
         ArbitrumDomainGuest(address(guest)).initializeSettle(index);
+    }
+
+}
+
+contract ArbitrumOneIntegrationTest is ArbitrumIntegrationTest {
+
+    function setupGuestDomain() internal virtual override returns (BridgedDomain) {
+        return new ArbitrumDomain(config, "arbitrum-one", hostDomain);
+    }
+
+}
+
+contract ArbitrumNovaIntegrationTest is ArbitrumIntegrationTest {
+
+    function setupGuestDomain() internal virtual override returns (BridgedDomain) {
+        return new ArbitrumDomain(config, "arbitrum-nova", hostDomain);
     }
 
 }

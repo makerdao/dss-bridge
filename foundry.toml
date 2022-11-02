@@ -9,7 +9,8 @@ remappings = [
     'ds-thing/=lib/xdomain-dss/lib/ds-value/lib/ds-thing/src/',
     'ds-auth/=lib/xdomain-dss/lib/ds-value/lib/ds-thing/lib/ds-auth/src/',
     'ds-math/=lib/xdomain-dss/lib/ds-value/lib/ds-thing/lib/ds-math/src/',
-    'ds-note/=lib/xdomain-dss/lib/ds-value/lib/ds-thing/lib/ds-note/src/'
+    'ds-note/=lib/xdomain-dss/lib/ds-value/lib/ds-thing/lib/ds-note/src/',
+    'dss-teleport/=lib/dss-teleport/src/'
 ]
 fs_permissions = [
     { access = "read", path = "./script/input/"},

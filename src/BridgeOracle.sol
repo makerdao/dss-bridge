@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pragma solidity ^0.8.14;
+pragma solidity ^0.8.15;
 
 interface VatLike {
     function live() external view returns (uint256);
@@ -37,10 +37,6 @@ contract BridgeOracle {
 
     uint256 constant WAD = 10 ** 18;
     uint256 constant RAY = 10 ** 27;
-
-    // --- Events ---
-    event Rely(address indexed usr);
-    event Deny(address indexed usr);
 
     constructor(address _host) {
         host = DomainHostLike(_host);
