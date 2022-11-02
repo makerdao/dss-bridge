@@ -294,7 +294,7 @@ abstract contract DomainHost {
         require(vat.live() == 1, "DomainHost/vat-not-live");
 
         uint256 wad = sin;
-        require(sin > 0, "DomainHost/no-sin");
+        require(wad > 0, "DomainHost/no-sin");
         vat.suck(vow, address(this), wad * RAY);
         daiJoin.exit(address(escrow), wad);
         sin = 0;
