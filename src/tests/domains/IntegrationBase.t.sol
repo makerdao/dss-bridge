@@ -22,9 +22,16 @@ import { ClaimToken } from "../../ClaimToken.sol";
 import { DomainHost, TeleportGUID } from "../../DomainHost.sol";
 import { DomainGuest } from "../../DomainGuest.sol";
 import { BridgeOracle } from "../../BridgeOracle.sol";
-import { RouterMock } from "../mocks/RouterMock.sol";
 
 import { XDomainDss, DssInstance, XDomainDssConfig } from "../../deploy/XDomainDss.sol";
+import {
+    DssTeleport,
+    TeleportInstance,
+    DssTeleportConfig,
+    DssTeleportDomainConfig,
+    TeleportRouter,
+    TeleportFees
+} from "../../deploy/DssTeleport.sol";
 import { DssBridge, BridgeInstance, DssBridgeHostConfig } from "../../deploy/DssBridge.sol";
 
 // TODO use actual dog when ready
@@ -41,6 +48,7 @@ abstract contract IntegrationBaseTest is DSSTest {
 
     using GodMode for *;
     using MCD for DssInstance;
+    using stdJson for string;
 
     string config;
     RootDomain rootDomain;
@@ -48,17 +56,19 @@ abstract contract IntegrationBaseTest is DSSTest {
 
     // Host-side contracts
     DssInstance dss;
-    bytes32 ilk;
-    address escrow;
-    BridgeOracle pip;
+    TeleportInstance teleport;
+    BridgeInstance bridge;
     DomainHost host;
-    RouterMock hostRouter;
+    bytes32 ilk;
+    bytes32 domain;
+    address escrow;
 
     // Guest-side contracts
     DssInstance rdss;
-    ClaimToken claimToken;
+    TeleportInstance rteleport;
+    BridgeInstance rbridge;
     DomainGuest guest;
-    RouterMock guestRouter;
+    bytes32 rdomain;
 
     bytes32 constant GUEST_COLL_ILK = "ETH-A";
 
@@ -82,13 +92,23 @@ abstract contract IntegrationBaseTest is DSSTest {
     function postSetup() internal virtual override {
         guestDomain = setupGuestDomain();
 
+        domain = rootDomain.readConfigBytes32FromString("domain");
+        rdomain = guestDomain.readConfigBytes32FromString("domain");
+
         // Deploy all contracts
-        hostRouter = new RouterMock(address(dss.dai));
-        address guestAddr = computeCreateAddress(address(this), 15);
-        BridgeInstance memory hostBridge = deployHost(guestAddr);
-        host = hostBridge.host;
+        teleport = DssTeleport.deploy(
+            address(this),
+            rootDomain.readConfigAddress("admin"),
+            rootDomain.readConfigBytes32FromString("teleportIlk"),
+            domain,
+            rootDomain.readConfigBytes32FromString("teleportParentDomain"),
+            address(dss.daiJoin)
+        );
+        TeleportFees fees = DssTeleport.deployLinearFee(WAD / 10000, 8 days);
+        address guestAddr = computeCreateAddress(address(this), 21);
+        bridge = deployHost(guestAddr);
+        host = bridge.host;
         escrow = guestDomain.readConfigAddress("escrow");
-        pip = hostBridge.oracle;
         ilk = host.ilk();
 
         guestDomain.selectFork();
@@ -97,18 +117,43 @@ abstract contract IntegrationBaseTest is DSSTest {
             guestDomain.readConfigAddress("admin"),
             guestDomain.readConfigAddress("dai")
         );
-        guestRouter = new RouterMock(address(rdss.dai));
-        BridgeInstance memory guestBridge = deployGuest(rdss, address(hostBridge.host));
-        guest = guestBridge.guest;
+        rteleport = DssTeleport.deploy(
+            address(this),
+            guestDomain.readConfigAddress("admin"),
+            guestDomain.readConfigBytes32FromString("teleportIlk"),
+            rdomain,
+            guestDomain.readConfigBytes32FromString("teleportParentDomain"),
+            address(rdss.daiJoin)
+        );
+        TeleportFees rfees = DssTeleport.deployLinearFee(WAD / 10000, 8 days);
+        rbridge = deployGuest(rdss, address(bridge.host));
+        guest = rbridge.guest;
         assertEq(address(guest), guestAddr, "guest address mismatch");
-        claimToken = guestBridge.claimToken;
 
         // Mimic the spells (Host + Guest)
         rootDomain.selectFork();
         vm.startPrank(rootDomain.readConfigAddress("admin"));
+        DssTeleport.init(
+            dss,
+            teleport,
+            DssTeleportConfig({
+                debtCeiling: 2_000_000 * RAD,
+                oracleThreshold: 13,
+                oracleSigners: new address[](0)
+            })
+        );
+        DssTeleport.initDomain(
+            teleport,
+            DssTeleportDomainConfig({
+                domain: rdomain,
+                fees: address(fees),
+                gateway: address(host),
+                debtCeiling: 1_000_000 * WAD
+            })
+        );
         DssBridge.initHost(
             dss,
-            hostBridge,
+            bridge,
             DssBridgeHostConfig({
                 escrow: guestDomain.readConfigAddress("escrow"),
                 debtCeiling: 1_000_000 * RAD
@@ -122,9 +167,27 @@ abstract contract IntegrationBaseTest is DSSTest {
         XDomainDss.init(rdss, XDomainDssConfig({
             endWait: 1 hours
         }));
+        DssTeleport.init(
+            rdss,
+            rteleport,
+            DssTeleportConfig({
+                debtCeiling: 2_000_000 * RAD,
+                oracleThreshold: 13,
+                oracleSigners: new address[](0)
+            })
+        );
+        DssTeleport.initDomain(
+            rteleport,
+            DssTeleportDomainConfig({
+                domain: domain,
+                fees: address(rfees),
+                gateway: address(guest),
+                debtCeiling: 1_000_000 * WAD
+            })
+        );
         DssBridge.initGuest(
             rdss,
-            guestBridge
+            rbridge
         );
         initGuest();
         vm.stopPrank();
@@ -321,7 +384,7 @@ abstract contract IntegrationBaseTest is DSSTest {
     function testGlobalShutdown() public {
         assertEq(host.live(), 1);
         assertEq(dss.vat.live(), 1);
-        assertEq(pip.read(), bytes32(WAD));
+        assertEq(bridge.oracle.read(), bytes32(WAD));
 
         // Set up some debt in the guest instance
         hostLift(100 ether);
@@ -440,11 +503,11 @@ abstract contract IntegrationBaseTest is DSSTest {
         hostExit(address(this), gems);
         assertEq(dss.vat.gem(ilk, address(this)), 0);
         guestDomain.relayFromHost(true);
-        uint256 tokens = claimToken.balanceOf(address(this));
+        uint256 tokens = rbridge.claimToken.balanceOf(address(this));
         assertApproxEqAbs(tokens, 20 ether, WAD / 10000);
 
         // Can now get some collateral on the guest domain
-        claimToken.approve(address(rdss.end), type(uint256).max);
+        rbridge.claimToken.approve(address(rdss.end), type(uint256).max);
         assertEq(rdss.end.bag(address(this)), 0);
         rdss.end.pack(tokens);
         assertEq(rdss.end.bag(address(this)), tokens);
@@ -500,9 +563,18 @@ abstract contract IntegrationBaseTest is DSSTest {
     }
 
     function testRegisterMint() public {
-        TeleportGUID memory teleport = TeleportGUID({
-            sourceDomain: "host-domain",
-            targetDomain: "guest-domain",
+        TeleportGUID memory teleportToGuest = TeleportGUID({
+            sourceDomain: domain,
+            targetDomain: rdomain,
+            receiver: bytes32(0),
+            operator: bytes32(0),
+            amount: 100 ether,
+            nonce: 0,
+            timestamp: uint48(block.timestamp)
+        });
+        TeleportGUID memory teleportToHost = TeleportGUID({
+            sourceDomain: rdomain,
+            targetDomain: domain,
             receiver: bytes32(0),
             operator: bytes32(0),
             amount: 100 ether,
@@ -511,34 +583,34 @@ abstract contract IntegrationBaseTest is DSSTest {
         });
 
         // Host -> Guest
-        host.registerMint(teleport);
-        hostInitializeRegisterMint(teleport);
+        host.registerMint(teleportToGuest);
+        hostInitializeRegisterMint(teleportToGuest);
         vm.expectEmit(true, true, true, true);
-        emit FinalizeRegisterMint(teleport);
+        emit FinalizeRegisterMint(teleportToGuest);
         guestDomain.relayFromHost(true);
 
         // Guest -> Host
-        guest.registerMint(teleport);
-        guestInitializeRegisterMint(teleport);
+        guest.registerMint(teleportToHost);
+        guestInitializeRegisterMint(teleportToHost);
         vm.expectEmit(true, true, true, true);
-        emit FinalizeRegisterMint(teleport);
+        emit FinalizeRegisterMint(teleportToHost);
         guestDomain.relayToHost(true);
     }
 
     function testSettle() public {
         // Host -> Guest
         dss.dai.mint(address(host), 100 ether);
-        host.settle("host-domain", "guest-domain", 100 ether);
+        host.settle(domain, rdomain, 100 ether);
         hostInitializeSettle(0);
         guestDomain.relayFromHost(true);
-        assertEq(rdss.dai.balanceOf(address(guestRouter)), 100 ether);
+        assertEq(rdss.vat.dai(address(rteleport.join)), 100 * RAD);
 
         // Guest -> Host
         rdss.dai.setBalance(address(guest), 50 ether);
-        guest.settle("guest-domain", "host-domain", 50 ether);
+        guest.settle(rdomain, domain, 50 ether);
         guestInitializeSettle(0);
         guestDomain.relayToHost(true);
-        assertEq(dss.dai.balanceOf(address(hostRouter)), 50 ether);
+        assertEq(dss.vat.dai(address(teleport.join)), 50 * RAD);
     }
 
 }

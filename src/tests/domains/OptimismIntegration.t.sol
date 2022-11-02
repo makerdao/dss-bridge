@@ -22,7 +22,7 @@ contract OptimismIntegrationTest is IntegrationBaseTest {
             guestDomain.readConfigBytes32("ilk"),
             address(dss.daiJoin),
             guestDomain.readConfigAddress("escrow"),
-            address(hostRouter),
+            address(teleport.router),
             address(OptimismDomain(address(guestDomain)).l1Messenger()),
             guestAddr
         );
@@ -36,7 +36,7 @@ contract OptimismIntegrationTest is IntegrationBaseTest {
             address(this),
             guestDomain.readConfigAddress("admin"),
             address(dss.daiJoin),
-            address(guestRouter),
+            address(rteleport.router),
             address(OptimismDomain(address(guestDomain)).l2Messenger()),
             hostAddr
         );

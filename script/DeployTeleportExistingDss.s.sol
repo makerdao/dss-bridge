@@ -22,6 +22,14 @@ contract DeployTeleportExistingDss is Script {
         return vm.readFile(string.concat(root, chainInputFolder, string.concat(input, ".json")));
     }
 
+    function bytesToBytes32(bytes memory b) private pure returns (bytes32) {
+        bytes32 out;
+        for (uint256 i = 0; i < b.length; i++) {
+            out |= bytes32(b[i] & 0xFF) >> (i * 8);
+        }
+        return out;
+    }
+
     function run() external {
         config = readInput("teleport");
         dss = MCD.loadFromChainlog(config.readAddress(".chainlog"));
@@ -30,9 +38,9 @@ contract DeployTeleportExistingDss is Script {
         DssTeleport.deploy(
             msg.sender,
             config.readAddress(".admin"),
-            config.readBytes32(".ilk"),
-            config.readBytes32(".domain"),
-            config.readBytes32(".parentDomain"),
+            bytesToBytes32(bytes(config.readString(".ilk"))),
+            bytesToBytes32(bytes(config.readString(".domain"))),
+            bytesToBytes32(bytes(config.readString(".parentDomain"))),
             address(dss.daiJoin)
         );
         vm.stopBroadcast();

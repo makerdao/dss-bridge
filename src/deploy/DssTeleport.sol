@@ -18,7 +18,7 @@ struct TeleportInstance {
 }
 
 struct DssTeleportConfig {
-    uint256 debtCeiling;
+    uint256 debtCeiling;    // RAD
     uint256 oracleThreshold;
     address[] oracleSigners;
 }

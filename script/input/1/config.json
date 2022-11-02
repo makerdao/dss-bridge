@@ -6,6 +6,8 @@
             "chainlog": "0xdA0Ab1e0017DEbCd72Be8599041a2aa3bA7e740F",
             "admin": "0xBE8E3e3618f7474F8cB1d074A26afFef007E98FB",
             "domain": "ETH-MAIN-A",
+            "teleportIlk": "TELEPORT-A",
+            "teleportParentDomain": "",
             "daiJoin": "0x9759A6Ac90977b93B58547b4A71c78317f391A28"
         },
         "optimism": {
@@ -16,6 +18,7 @@
             "admin": "0x10E6593CDda8c58a1d0f14C5164B376352a55f2F",
             "ilk": "XD-OPT-MAIN-A",
             "teleportIlk": "TELEPORT-A",
+            "teleportParentDomain": "ETH-MAIN-A",
             "domain": "OPT-MAIN-A",
             "escrow": "0x467194771dAe2967Aef3ECbEDD3Bf9a310C76C65",
             "dai": "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
@@ -28,6 +31,7 @@
             "admin": "0x10E6593CDda8c58a1d0f14C5164B376352a55f2F",
             "ilk": "XD-ARB-ONE-A",
             "teleportIlk": "TELEPORT-A",
+            "teleportParentDomain": "ETH-MAIN-A",
             "domain": "ARB-ONE-A",
             "escrow": "0xA10c7CE4b876998858b1a9E12b10092229539400",
             "dai": "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
@@ -40,6 +44,7 @@
             "admin": "0x467194771dAe2967Aef3ECbEDD3Bf9a310C76C65",
             "ilk": "XD-ARB-NOVA-A",
             "teleportIlk": "TELEPORT-A",
+            "teleportParentDomain": "ETH-MAIN-A",
             "domain": "ARB-NOVA-A",
             "escrow": "0xA2e996f0cb33575FA0E36e8f62fCd4a9b897aAd3",
             "dai": "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"

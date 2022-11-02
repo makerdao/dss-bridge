@@ -18,7 +18,7 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
             guestDomain.readConfigBytes32("ilk"),
             address(dss.daiJoin),
             guestDomain.readConfigAddress("escrow"),
-            address(hostRouter),
+            address(teleport.router),
             address(ArbitrumDomain(address(guestDomain)).inbox()),
             guestAddr
         );
@@ -32,7 +32,7 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
             address(this),
             guestDomain.readConfigAddress("admin"),
             address(dss.daiJoin),
-            address(guestRouter),
+            address(rteleport.router),
             address(ArbitrumDomain(address(guestDomain)).arbSys()),
             hostAddr
         );

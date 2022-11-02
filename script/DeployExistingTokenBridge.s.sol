@@ -52,7 +52,7 @@ contract DeployExistingTokenBridge is Script {
             BridgeInstance memory bridge = DssBridge.deployOptimismHost(
                 msg.sender,
                 hostAdmin,
-                guestDomain.readConfigBytes32("ilk"),
+                guestDomain.readConfigBytes32FromString("ilk"),
                 hostDomain.readConfigAddress("daiJoin"),
                 guestDomain.readConfigAddress("escrow"),
                 vm.envAddress("DEPLOY_ROUTER"),
@@ -64,7 +64,7 @@ contract DeployExistingTokenBridge is Script {
             BridgeInstance memory bridge = DssBridge.deployArbitrumHost(
                 msg.sender,
                 hostAdmin,
-                guestDomain.readConfigBytes32("ilk"),
+                guestDomain.readConfigBytes32FromString("ilk"),
                 hostDomain.readConfigAddress("daiJoin"),
                 guestDomain.readConfigAddress("escrow"),
                 vm.envAddress("DEPLOY_ROUTER"),
@@ -89,9 +89,9 @@ contract DeployExistingTokenBridge is Script {
         TeleportInstance memory teleport = DssTeleport.deploy(
             msg.sender,
             guestAdmin,
-            guestDomain.readConfigBytes32("teleportIlk"),
-            guestDomain.readConfigBytes32("domain"),
-            hostDomain.readConfigBytes32("domain"),
+            guestDomain.readConfigBytes32FromString("teleportIlk"),
+            guestDomain.readConfigBytes32FromString("domain"),
+            hostDomain.readConfigBytes32FromString("domain"),
             address(dss.daiJoin)
         );
         if (guestType == OPTIMISM) {
