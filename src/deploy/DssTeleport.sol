@@ -81,7 +81,7 @@ library DssTeleport {
         dss.vat.init(ilk);
         dss.jug.init(ilk);
         dss.vat.file(ilk, "line", cfg.debtCeiling);
-        dss.vat.file("Line", dss.vat.Line() + cfg.debtCeiling);
+        //dss.vat.file("Line", dss.vat.Line() + cfg.debtCeiling);
         dss.vat.file(ilk, "spot", 10 ** 27);
         dss.cure.lift(address(teleport.join));
         dss.vat.rely(address(teleport.join));

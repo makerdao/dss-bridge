@@ -69,7 +69,7 @@ contract DomainGuestTest is DSSTest {
     bytes32 constant SOURCE_DOMAIN = "SOME-DOMAIN-A";
     bytes32 constant TARGET_DOMAIN = "SOME-DOMAIN-B";
 
-    event Lift(int256 line);
+    event Lift(uint256 wad);
     event Release(uint256 burned);
     event Push(int256 surplus);
     event Rectify(uint256 wad);
@@ -167,34 +167,30 @@ contract DomainGuestTest is DSSTest {
 
     function testLift() public {
         assertEq(guest.grain(), 0);
-        assertEq(guest.line(), 0);
         assertEq(vat.Line(), 0);
         assertEq(guest.lid(), 0);
 
         vm.expectEmit(true, true, true, true);
-        emit Lift(int256(100 * RAD));
-        guest.lift(0, int256(100 * RAD));
+        emit Lift(100 * WAD);
+        guest.lift(0, 100 * WAD);
 
         assertEq(guest.grain(), 100 ether);
-        assertEq(guest.line(), int256(100 * RAD));
         assertEq(vat.Line(), 100 * RAD);
         assertEq(guest.lid(), 1);
     }
 
     function testRelease() public {
         // Set debt ceiling to 100 DAI
-        guest.lift(0, int256(100 * RAD));
+        guest.lift(0, 100 * WAD);
 
         assertEq(guest.grain(), 100 ether);
-        assertEq(guest.line(), int256(100 * RAD));
         assertEq(vat.Line(), 100 * RAD);
         assertEq(guest.lid(), 1);
 
         // Lower debt ceiling to 50 DAI
-        guest.lift(1, -int256(50 * RAD));
+        guest.lift(1, 50 * WAD);
 
         assertEq(guest.grain(), 100 ether);
-        assertEq(guest.line(), int256(50 * RAD));
         assertEq(vat.Line(), 50 * RAD);
         assertEq(guest.lid(), 2);
 
@@ -204,7 +200,6 @@ contract DomainGuestTest is DSSTest {
         guest.release();
 
         assertEq(guest.grain(), 50 ether);
-        assertEq(guest.line(), int256(50 * RAD));
         assertEq(vat.Line(), 50 * RAD);
         assertEq(guest.lid(), 2);
         assertEq(guest.rid(), 1);
@@ -213,9 +208,9 @@ contract DomainGuestTest is DSSTest {
 
     function testReleaseDebtTaken() public {
         // Set so that debt is larger than the global DC
-        guest.lift(0, int256(100 * RAD));
+        guest.lift(0, 100 * WAD);
         vat.suck(address(this), address(this), 50 * RAD);
-        guest.lift(1, -int256(100 * RAD));
+        guest.lift(1, 0);
 
         assertEq(vat.Line(), 0);
         assertEq(vat.debt(), 50 * RAD);
@@ -247,18 +242,16 @@ contract DomainGuestTest is DSSTest {
         guest.file("dust", 100 * RAD);
 
         // Set debt ceiling to 100 DAI
-        guest.lift(0, int256(100 * RAD));
+        guest.lift(0, 100 * WAD);
 
         assertEq(guest.grain(), 100 ether);
-        assertEq(guest.line(), int256(100 * RAD));
         assertEq(vat.Line(), 100 * RAD);
         assertEq(guest.lid(), 1);
 
         // Lower debt ceiling to 50 DAI
-        guest.lift(1, -int256(50 * RAD));
+        guest.lift(1, 50 * WAD);
 
         assertEq(guest.grain(), 100 ether);
-        assertEq(guest.line(), int256(50 * RAD));
         assertEq(vat.Line(), 50 * RAD);
         assertEq(guest.lid(), 2);
 
@@ -392,7 +385,7 @@ contract DomainGuestTest is DSSTest {
     }
 
     function testTell() public {
-        guest.lift(0, int256(100 * RAD));
+        guest.lift(0, 100 * WAD);
         end.setDebt(10 * RAD);
 
         vm.expectEmit(true, true, true, true);

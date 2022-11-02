@@ -83,7 +83,6 @@ abstract contract DomainGuest {
     EndLike public end;
     uint256 public lid;         // Local ordering id
     uint256 public rid;         // Remote ordering id
-    int256  public line;        // Keep track of changes in line
     uint256 public grain;       // Keep track of the pre-minted DAI in the remote escrow [WAD]
     uint256 public live;
     uint256 public dust;        // The dust limit for preventing spam attacks [RAD]
@@ -103,7 +102,7 @@ abstract contract DomainGuest {
     event Deny(address indexed usr);
     event File(bytes32 indexed what, address data);
     event File(bytes32 indexed what, uint256 data);
-    event Lift(int256 dline);
+    event Lift(uint256 wad);
     event Release(uint256 burned);
     event Push(int256 surplus);
     event Rectify(uint256 wad);
@@ -220,15 +219,16 @@ abstract contract DomainGuest {
 
     /// @notice Record changes in line and grain and update dss global debt ceiling if necessary
     /// @param _lid Local ordering id
-    /// @param dline The change in the line [RAD]
-    function lift(uint256 _lid, int256 dline) external hostOnly ordered(_lid) {
+    /// @param wad The new debt ceiling [WAD]
+    function lift(uint256 _lid, uint256 wad) external hostOnly ordered(_lid) {
         require(live == 1, "DomainGuest/not-live");
 
-        line += dline;
-        if (dline > 0) grain += uint256(dline) / RAY;
-        vat.file("Line", uint256(line));
+        uint256 lastLine = vat.Line();
+        uint256 rad = wad * RAY;
+        if (rad > lastLine) grain = wad;
+        vat.file("Line", rad);
 
-        emit Lift(dline);
+        emit Lift(wad);
     }
 
     /// @notice Will release remote DAI from the escrow when it is safe to do so

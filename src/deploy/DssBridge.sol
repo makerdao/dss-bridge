@@ -144,7 +144,7 @@ library DssBridge {
         dss.spotter.file(ilk, "mat", 10 ** 27);
         dss.spotter.poke(ilk);
         dss.vat.file(ilk, "line", cfg.debtCeiling);
-        dss.vat.file("Line", dss.vat.Line() + cfg.debtCeiling);
+        //dss.vat.file("Line", dss.vat.Line() + cfg.debtCeiling);
         dss.cure.lift(address(bridge.host));
     }
 

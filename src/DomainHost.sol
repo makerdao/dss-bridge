@@ -23,7 +23,7 @@ import "./TeleportGUID.sol";
 
 interface DomainGuestLike {
     function deposit(address to, uint256 amount) external;
-    function lift(uint256 _lid, int256 dline) external;
+    function lift(uint256 _lid, uint256 wad) external;
     function rectify(uint256 _lid, uint256 wad) external;
     function cage(uint256 _lid) external;
     function exit(address usr, uint256 wad) external;
@@ -241,7 +241,7 @@ abstract contract DomainHost {
 
         line = rad;
 
-        payload = abi.encodeWithSelector(DomainGuestLike.lift.selector, rid++, dline);
+        payload = abi.encodeWithSelector(DomainGuestLike.lift.selector, rid++, wad);
 
         emit Lift(wad);
     }

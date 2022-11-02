@@ -259,6 +259,8 @@ abstract contract IntegrationBaseTest is DSSTest {
 
         guestDomain.relayFromHost(true);
         assertEq(rdss.vat.Line(), 100 * RAD);
+        assertEq(rdss.vat.debt(), 0);
+        assertEq(guest.grain(), 100 * WAD);
 
         // Pre-mint DAI is not released here
         hostDomain.selectFork();
@@ -273,6 +275,8 @@ abstract contract IntegrationBaseTest is DSSTest {
 
         guestDomain.relayFromHost(true);
         assertEq(rdss.vat.Line(), 50 * RAD);
+        assertEq(rdss.vat.debt(), 0);
+        assertEq(guest.grain(), 100 * WAD);
 
         // Notify the host that the DAI is safe to remove
         guestRelease();
