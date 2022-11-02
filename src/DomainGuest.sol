@@ -130,11 +130,6 @@ abstract contract DomainGuest {
         _;
     }
 
-    modifier isLive {
-        require(live == 1, "DomainGuest/not-live");
-        _;
-    }
-
     modifier ordered(uint256 _lid) {
         require(lid++ == _lid, "DomainGuest/out-of-order");
         _;
@@ -226,7 +221,9 @@ abstract contract DomainGuest {
     /// @notice Record changes in line and grain and update dss global debt ceiling if necessary
     /// @param _lid Local ordering id
     /// @param dline The change in the line [RAD]
-    function lift(uint256 _lid, int256 dline) external hostOnly isLive ordered(_lid) {
+    function lift(uint256 _lid, int256 dline) external hostOnly ordered(_lid) {
+        require(live == 1, "DomainGuest/not-live");
+
         line += dline;
         if (dline > 0) grain += uint256(dline) / RAY;
         vat.file("Line", uint256(line));
@@ -236,7 +233,9 @@ abstract contract DomainGuest {
 
     /// @notice Will release remote DAI from the escrow when it is safe to do so
     /// @dev    Should be run by keeper on a regular schedule.
-    function _release() internal isLive returns (bytes memory payload) {
+    function _release() internal returns (bytes memory payload) {
+        require(live == 1, "DomainGuest/not-live");
+
         uint256 limit = _max(vat.Line() / RAY, _divup(vat.debt(), RAY));
         require(grain >= limit + dust / RAY, "DomainGuest/dust");
         uint256 burned = grain - limit;
@@ -249,7 +248,9 @@ abstract contract DomainGuest {
 
     /// @notice Push surplus (or deficit) to the host dss
     /// @dev Should be run by keeper on a regular schedule
-    function _push() internal isLive returns (bytes memory payload) {
+    function _push() internal returns (bytes memory payload) {
+        require(live == 1, "DomainGuest/not-live");
+
         uint256 _dai = vat.dai(address(this));
         uint256 _sin = vat.sin(address(this));
         if (_dai >= _sin + dust) {
@@ -287,7 +288,9 @@ abstract contract DomainGuest {
 
     /// @notice Trigger the end module
     /// @param _lid Local ordering id
-    function cage(uint256 _lid) external hostOnly isLive ordered(_lid) {
+    function cage(uint256 _lid) external hostOnly ordered(_lid) {
+        require(live == 1, "DomainGuest/not-live");
+
         live = 0;
         end.cage();
 

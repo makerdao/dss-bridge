@@ -130,11 +130,6 @@ abstract contract DomainHost {
         _;
     }
 
-    modifier vatLive {
-        require(vat.live() == 1, "DomainHost/vat-not-live");
-        _;
-    }
-
     modifier ordered(uint256 _lid) {
         require(lid++ == _lid, "DomainHost/out-of-order");
         _;
@@ -227,7 +222,9 @@ abstract contract DomainHost {
     /// @dev Please note that pre-mint DAI cannot be removed from the remote domain
     /// until the remote domain signals that it is safe to do so
     /// @param wad The new debt ceiling [WAD]
-    function _lift(uint256 wad) internal auth vatLive returns (bytes memory payload) {
+    function _lift(uint256 wad) internal auth returns (bytes memory payload) {
+        require(vat.live() == 1, "DomainHost/vat-not-live");
+
         uint256 rad = wad * RAY;
         uint256 minted;
         int256 dline = _int256(rad) - _int256(line);
@@ -252,7 +249,9 @@ abstract contract DomainHost {
     /// @notice Withdraw pre-mint DAI from the remote domain
     /// @param _lid Local ordering id
     /// @param wad The amount of DAI to release [WAD]
-    function release(uint256 _lid, uint256 wad) external guestOnly vatLive ordered(_lid) {
+    function release(uint256 _lid, uint256 wad) external guestOnly ordered(_lid) {
+        require(vat.live() == 1, "DomainHost/vat-not-live");
+
         int256 amt = -_int256(wad);
 
         // Fix any permissionless repays that may have occurred
@@ -291,7 +290,9 @@ abstract contract DomainHost {
     /// @notice Move bad debt from the remote domain into the local vow
     /// @dev This is a potentially dangerous operation as a malicious domain can drain the entire surplus buffer
     /// Because of this we require an authed party to perform this operation
-    function _rectify() internal auth vatLive returns (bytes memory payload) {
+    function _rectify() internal auth returns (bytes memory payload) {
+        require(vat.live() == 1, "DomainHost/vat-not-live");
+
         uint256 wad = sin;
         require(sin > 0, "DomainHost/no-sin");
         vat.suck(vow, address(this), wad * RAY);
