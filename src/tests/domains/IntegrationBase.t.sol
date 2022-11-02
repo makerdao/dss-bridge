@@ -7,8 +7,9 @@ import "ds-value/value.sol";
 import { MCD, DssInstance } from "dss-test/MCD.sol";
 
 import { DaiAbstract, EndAbstract } from "dss-interfaces/Interfaces.sol";
-import { BridgedDomain } from "dss-test/domains/BridgedDomain.sol";
+import { Domain } from "dss-test/domains/Domain.sol";
 import { RootDomain } from "dss-test/domains/RootDomain.sol";
+import { BridgedDomain } from "dss-test/domains/BridgedDomain.sol";
 import { Cure } from "xdomain-dss/Cure.sol";
 import { Dai } from "xdomain-dss/Dai.sol";
 import { DaiJoin } from "xdomain-dss/DaiJoin.sol";
@@ -51,7 +52,7 @@ abstract contract IntegrationBaseTest is DSSTest {
     using stdJson for string;
 
     string config;
-    RootDomain rootDomain;
+    Domain hostDomain;
     BridgedDomain guestDomain;
 
     // Host-side contracts
@@ -77,10 +78,10 @@ abstract contract IntegrationBaseTest is DSSTest {
     function setupEnv() internal virtual override {
         config = readInput("config");
 
-        rootDomain = new RootDomain(config, "root");
-        rootDomain.selectFork();
-        rootDomain.loadDssFromChainlog();
-        dss = rootDomain.dss(); // For ease of access
+        hostDomain = new RootDomain(config, "root");
+        hostDomain.selectFork();
+        hostDomain.loadDssFromChainlog();
+        dss = hostDomain.dss(); // For ease of access
     }
 
     function setupGuestDomain() internal virtual returns (BridgedDomain);
@@ -92,16 +93,16 @@ abstract contract IntegrationBaseTest is DSSTest {
     function postSetup() internal virtual override {
         guestDomain = setupGuestDomain();
 
-        domain = rootDomain.readConfigBytes32FromString("domain");
+        domain = hostDomain.readConfigBytes32FromString("domain");
         rdomain = guestDomain.readConfigBytes32FromString("domain");
 
         // Deploy all contracts
         teleport = DssTeleport.deploy(
             address(this),
-            rootDomain.readConfigAddress("admin"),
-            rootDomain.readConfigBytes32FromString("teleportIlk"),
+            hostDomain.readConfigAddress("admin"),
+            hostDomain.readConfigBytes32FromString("teleportIlk"),
             domain,
-            rootDomain.readConfigBytes32FromString("teleportParentDomain"),
+            hostDomain.readConfigBytes32FromString("teleportParentDomain"),
             address(dss.daiJoin)
         );
         TeleportFees fees = DssTeleport.deployLinearFee(WAD / 10000, 8 days);
@@ -131,8 +132,8 @@ abstract contract IntegrationBaseTest is DSSTest {
         assertEq(address(guest), guestAddr, "guest address mismatch");
 
         // Mimic the spells (Host + Guest)
-        rootDomain.selectFork();
-        vm.startPrank(rootDomain.readConfigAddress("admin"));
+        hostDomain.selectFork();
+        vm.startPrank(hostDomain.readConfigAddress("admin"));
         DssTeleport.init(
             dss,
             teleport,
@@ -197,7 +198,7 @@ abstract contract IntegrationBaseTest is DSSTest {
         address(guest).setWard(address(this), 1);
 
         // Default back to host domain and give auth for convenience
-        rootDomain.selectFork();
+        hostDomain.selectFork();
         dss.giveAdminAccess(address(this));
         address(host).setWard(address(this), 1);
     }
@@ -260,7 +261,7 @@ abstract contract IntegrationBaseTest is DSSTest {
         assertEq(rdss.vat.Line(), 100 * RAD);
 
         // Pre-mint DAI is not released here
-        rootDomain.selectFork();
+        hostDomain.selectFork();
         hostLift(50 ether);
 
         (ink, art) = dss.vat.urns(ilk, address(host));
@@ -294,7 +295,7 @@ abstract contract IntegrationBaseTest is DSSTest {
         assertEq(rdss.vat.Line(), 50 * RAD);
         assertEq(rdss.vat.debt(), 40 * RAD);
 
-        rootDomain.selectFork();
+        hostDomain.selectFork();
         hostLift(25 ether);
         guestDomain.relayFromHost(true);
         guestRelease();
@@ -314,7 +315,7 @@ abstract contract IntegrationBaseTest is DSSTest {
         uint256 vowSin = dss.vat.sin(address(dss.vow));
         guestDomain.selectFork();
         int256 existingSurf = Vat(address(rdss.vat)).surf();
-        rootDomain.selectFork();
+        hostDomain.selectFork();
 
         // Set global DC and add 50 DAI surplus + 20 DAI debt to vow
         hostLift(100 ether);
@@ -343,7 +344,7 @@ abstract contract IntegrationBaseTest is DSSTest {
         uint256 vowSin = dss.vat.sin(address(dss.vow));
         guestDomain.selectFork();
         int256 existingSurf = Vat(address(rdss.vat)).surf();
-        rootDomain.selectFork();
+        hostDomain.selectFork();
 
         // Set global DC and add 20 DAI surplus + 50 DAI debt to vow
         hostLift(100 ether);
@@ -363,7 +364,7 @@ abstract contract IntegrationBaseTest is DSSTest {
         assertEq(rdss.vat.dai(address(guest)), 0);
         assertEq(rdss.vat.sin(address(guest)), 30 * RAD);
         assertEq(Vat(address(rdss.vat)).surf(), existingSurf);
-        rootDomain.selectFork();
+        hostDomain.selectFork();
 
         hostRectify();
         assertEq(dss.vat.dai(address(dss.vow)), vowDai);
@@ -401,7 +402,7 @@ abstract contract IntegrationBaseTest is DSSTest {
         assertEq(ink, 40 ether);
         assertEq(art, 40 ether);
 
-        rootDomain.selectFork();
+        hostDomain.selectFork();
         dss.end.cage();
         host.deny(address(this));       // Confirm cage can be done permissionlessly
         hostCage();
@@ -526,7 +527,7 @@ abstract contract IntegrationBaseTest is DSSTest {
         uint256 escrowDai = dss.dai.balanceOf(escrow);
         guestDomain.selectFork();
         int256 existingSurf = Vat(address(rdss.vat)).surf();
-        rootDomain.selectFork();
+        hostDomain.selectFork();
 
         hostDeposit(address(123), 100 ether);
         assertEq(dss.dai.balanceOf(escrow), escrowDai + 100 ether);
@@ -540,7 +541,7 @@ abstract contract IntegrationBaseTest is DSSTest {
         uint256 escrowDai = dss.dai.balanceOf(escrow);
         guestDomain.selectFork();
         int256 existingSurf = Vat(address(rdss.vat)).surf();
-        rootDomain.selectFork();
+        hostDomain.selectFork();
 
         dss.dai.mint(address(this), 100 ether);
         dss.dai.approve(address(host), 100 ether);

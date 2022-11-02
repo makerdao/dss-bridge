@@ -14,7 +14,7 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
     function deployHost(address guestAddr) internal virtual override returns (BridgeInstance memory) {
         return DssBridge.deployArbitrumHost(
             address(this),
-            rootDomain.readConfigAddress("admin"),
+            hostDomain.readConfigAddress("admin"),
             guestDomain.readConfigBytes32("ilk"),
             address(dss.daiJoin),
             guestDomain.readConfigAddress("escrow"),
@@ -109,7 +109,7 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
 contract ArbitrumOneIntegrationTest is ArbitrumIntegrationTest {
 
     function setupGuestDomain() internal virtual override returns (BridgedDomain) {
-        return new ArbitrumDomain(config, "arbitrum-one", rootDomain);
+        return new ArbitrumDomain(config, "arbitrum-one", hostDomain);
     }
 
 }
@@ -117,7 +117,7 @@ contract ArbitrumOneIntegrationTest is ArbitrumIntegrationTest {
 contract ArbitrumNovaIntegrationTest is ArbitrumIntegrationTest {
 
     function setupGuestDomain() internal virtual override returns (BridgedDomain) {
-        return new ArbitrumDomain(config, "arbitrum-nova", rootDomain);
+        return new ArbitrumDomain(config, "arbitrum-nova", hostDomain);
     }
 
 }

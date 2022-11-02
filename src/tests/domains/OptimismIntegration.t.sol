@@ -12,13 +12,13 @@ import { OptimismDomainGuest } from "../../domains/optimism/OptimismDomainGuest.
 contract OptimismIntegrationTest is IntegrationBaseTest {
 
     function setupGuestDomain() internal virtual override returns (BridgedDomain) {
-        return new OptimismDomain(config, "optimism", rootDomain);
+        return new OptimismDomain(config, "optimism", hostDomain);
     }
 
     function deployHost(address guestAddr) internal virtual override returns (BridgeInstance memory) {
         return DssBridge.deployOptimismHost(
             address(this),
-            rootDomain.readConfigAddress("admin"),
+            hostDomain.readConfigAddress("admin"),
             guestDomain.readConfigBytes32("ilk"),
             address(dss.daiJoin),
             guestDomain.readConfigAddress("escrow"),
