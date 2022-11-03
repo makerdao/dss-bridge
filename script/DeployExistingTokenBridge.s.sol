@@ -42,7 +42,7 @@ contract DeployExistingTokenBridge is Script {
         guestType = keccak256(abi.encodePacked(guestDomain.readConfigString("type")));
 
         guestDomain.selectFork();
-        address guestAddr = computeCreateAddress(msg.sender, vm.getNonce(msg.sender) + 34);
+        address guestAddr = computeCreateAddress(msg.sender, vm.getNonce(msg.sender) + 36);
         address hostAddr;
 
         // Host domain deploy
