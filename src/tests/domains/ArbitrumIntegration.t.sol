@@ -107,7 +107,7 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
 
 }
 
-abstract contract ArbitrumOneIntegrationTest is ArbitrumIntegrationTest {
+contract ArbitrumOneIntegrationTest is ArbitrumIntegrationTest {
 
     function setupGuestDomain() internal virtual override returns (BridgedDomain) {
         return new ArbitrumDomain(config, "arbitrum-one", hostDomain);
@@ -115,7 +115,7 @@ abstract contract ArbitrumOneIntegrationTest is ArbitrumIntegrationTest {
 
 }
 
-abstract contract ArbitrumNovaIntegrationTest is ArbitrumIntegrationTest {
+contract ArbitrumNovaIntegrationTest is ArbitrumIntegrationTest {
 
     function setupGuestDomain() internal virtual override returns (BridgedDomain) {
         return new ArbitrumDomain(config, "arbitrum-nova", hostDomain);
