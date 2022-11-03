@@ -3,7 +3,6 @@
 pragma solidity ^0.8.15;
 
 import "dss-test/DSSTest.sol";
-import "ds-value/value.sol";
 import { MCD, DssInstance } from "dss-test/MCD.sol";
 
 import { DaiAbstract, EndAbstract } from "dss-interfaces/Interfaces.sol";
