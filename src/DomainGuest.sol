@@ -317,7 +317,7 @@ abstract contract DomainGuest {
     function exit(address usr, uint256 wad) external hostOnly {
         // Convert to actual debt amount
         // Round against the user
-        uint256 claimAmount = wad * end.debt() / grain;
+        uint256 claimAmount = wad * (end.debt() / grain);
 
         claimToken.transferFrom(address(end), usr, claimAmount);
 

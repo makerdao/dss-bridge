@@ -111,7 +111,6 @@ library DssBridge {
         bridge.oracle = address(new DSValue());
 
         switchOwner(address(bridge.host), deployer, owner);
-        switchOwner(bridge.oracle, deployer, owner);
     }
 
     function deployArbitrumGuest(
