@@ -252,8 +252,6 @@ abstract contract DomainHost {
     function release(uint256 _lid, uint256 wad) external guestOnly ordered(_lid) {
         require(vat.live() == 1, "DomainHost/vat-not-live");
 
-        int256 amt = -_int256(wad);
-
         // Fix any permissionless repays that may have occurred
         (uint256 ink, uint256 art) = vat.urns(ilk, address(this));
         if (art < ink) {
@@ -265,8 +263,9 @@ abstract contract DomainHost {
 
         require(dai.transferFrom(escrow, address(this), wad), "DomainHost/transfer-failed");
         daiJoin.join(address(this), wad);
-        vat.frob(ilk, address(this), address(this), address(this), amt, amt);
-        vat.slip(ilk, address(this), amt);
+        int256 repay = -_int256(wad);
+        vat.frob(ilk, address(this), address(this), address(this), repay, repay);
+        vat.slip(ilk, address(this), repay);
 
         grain -= wad;
 
