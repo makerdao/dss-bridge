@@ -15,6 +15,7 @@ import { Spotter } from "xdomain-dss/Spotter.sol";
 import { Vat } from "xdomain-dss/Vat.sol";
 
 struct XDomainDssConfig {
+    address claimToken;
     uint256 endWait;
 }
 
@@ -36,7 +37,7 @@ library XDomainDss {
         dss.pot = PotAbstract(address(new Pot(address(dss.vat))));
         dss.jug = JugAbstract(address(new Jug(address(dss.vat))));
         dss.cure = CureAbstract(address(new Cure()));
-        dss.end = EndAbstract(address(new End()));
+        dss.end = EndAbstract(address(new End(address(dss.vat))));
 
         switchOwner(address(dss.vat), deployer, owner);
         switchOwner(address(dss.spotter), deployer, owner);
@@ -71,15 +72,17 @@ library XDomainDss {
 
         dss.spotter.rely(address(dss.end));
 
-        dss.end.file("vat", address(dss.vat));
         dss.end.file("pot", address(dss.pot));
         dss.end.file("spot", address(dss.spotter));
         dss.end.file("cure", address(dss.cure));
         //dss.end.file("vow", address(dss.vow));
+        dss.end.file("claim", address(cfg.claimToken));
 
         dss.end.file("wait", cfg.endWait);
 
         dss.cure.rely(address(dss.end));
+
+        WardsAbstract(cfg.claimToken).rely(address(dss.end));
 
         // daiJoin needs a vat.dai balance to match the existing dai supply
         uint256 totalSupply = dss.dai.totalSupply();

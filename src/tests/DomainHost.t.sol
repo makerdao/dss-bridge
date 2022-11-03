@@ -80,7 +80,7 @@ contract DomainHostTest is DSSTest {
     event Rectify(uint256 wad);
     event Cage();
     event Tell(uint256 value);
-    event Exit(address indexed usr, uint256 wad, uint256 claim);
+    event Exit(address indexed usr, uint256 wad);
     event UndoExit(address indexed originalSender, uint256 wad);
     event Deposit(address indexed to, uint256 amount);
     event UndoDeposit(address indexed originalSender, uint256 amount);
@@ -466,10 +466,10 @@ contract DomainHostTest is DSSTest {
         vat.slip(ILK, address(this), 50 ether);
 
         vm.expectEmit(true, true, true, true);
-        emit Exit(address(123), 50 ether, 15 ether);
+        emit Exit(address(123), 50 ether);
         host.exit(address(123), 50 ether);
 
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.exit.selector, address(123), 15 ether));     // 50% of 30 debt is 15
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.exit.selector, address(123), 50 ether));
     }
 
     function testUndoExit() public {

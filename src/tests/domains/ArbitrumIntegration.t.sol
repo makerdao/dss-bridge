@@ -32,6 +32,7 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
             address(this),
             guestDomain.readConfigAddress("admin"),
             address(dss.daiJoin),
+            address(claimToken),
             address(rteleport.router),
             address(ArbitrumDomain(address(guestDomain)).arbSys()),
             hostAddr
@@ -106,7 +107,7 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
 
 }
 
-contract ArbitrumOneIntegrationTest is ArbitrumIntegrationTest {
+abstract contract ArbitrumOneIntegrationTest is ArbitrumIntegrationTest {
 
     function setupGuestDomain() internal virtual override returns (BridgedDomain) {
         return new ArbitrumDomain(config, "arbitrum-one", hostDomain);
@@ -114,7 +115,7 @@ contract ArbitrumOneIntegrationTest is ArbitrumIntegrationTest {
 
 }
 
-contract ArbitrumNovaIntegrationTest is ArbitrumIntegrationTest {
+abstract contract ArbitrumNovaIntegrationTest is ArbitrumIntegrationTest {
 
     function setupGuestDomain() internal virtual override returns (BridgedDomain) {
         return new ArbitrumDomain(config, "arbitrum-nova", hostDomain);

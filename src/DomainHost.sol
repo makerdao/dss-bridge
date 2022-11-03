@@ -106,7 +106,7 @@ abstract contract DomainHost {
     event Rectify(uint256 wad);
     event Cage();
     event Tell(uint256 value);
-    event Exit(address indexed usr, uint256 wad, uint256 claim);
+    event Exit(address indexed usr, uint256 wad);
     event UndoExit(address indexed originalSender, uint256 wad);
     event Deposit(address indexed to, uint256 amount);
     event UndoDeposit(address indexed originalSender, uint256 amount);
@@ -332,22 +332,15 @@ abstract contract DomainHost {
     }
 
     /// @notice Allow DAI holders to exit during global settlement
-    /// @dev    This will mint a pro-rata claim token on the remote domain.
-    ///         Gem amount is scaled by the actual debt of the remote domain.
-    ///         `usr` is the address for the mint on the remote domain.
     /// @param usr The address to send the claim token to
     /// @param wad The amount of gems to exit [WAD]
     function _exit(address usr, uint256 wad) internal returns (bytes memory payload) {
         require(vat.live() == 0, "DomainHost/vat-live");
         vat.slip(ilk, msg.sender, -_int256(wad));
-
-        // Convert to actual debt amount
-        // Round against the user
-        uint256 claimAmount = wad * (grain - _divup(cure, RAY)) / grain;
         
-        payload = abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, claimAmount);
+        payload = abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, wad);
 
-        emit Exit(usr, wad, claimAmount);
+        emit Exit(usr, wad);
     }
 
     /// @notice Undo an exit

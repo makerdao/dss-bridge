@@ -10,7 +10,6 @@ import { EndMock } from "./mocks/EndMock.sol";
 import { EscrowMock } from "./mocks/EscrowMock.sol";
 import { RouterMock } from "./mocks/RouterMock.sol";
 import { VatMock } from "./mocks/VatMock.sol";
-import { ClaimToken } from "../ClaimToken.sol";
 import { DomainGuest, DomainHostLike, TeleportGUID, getGUIDHash, Settlement } from "../DomainGuest.sol";
 
 contract EmptyDomainGuest is DomainGuest {
@@ -63,7 +62,7 @@ contract DomainGuestTest is DSSTest {
     EndMock end;
     RouterMock router;
 
-    ClaimToken claimToken;
+    DaiMock claimToken;
     EmptyDomainGuest guest;
 
     bytes32 constant SOURCE_DOMAIN = "SOME-DOMAIN-A";
@@ -92,13 +91,12 @@ contract DomainGuestTest is DSSTest {
         end = new EndMock(address(vat));
         router = new RouterMock(address(dai));
 
-        claimToken = new ClaimToken();
+        claimToken = new DaiMock();
         guest = new EmptyDomainGuest(address(daiJoin), address(claimToken), address(router));
         guest.file("end", address(end));
 
         vat.hope(address(daiJoin));
         dai.approve(address(guest), type(uint256).max);
-        claimToken.rely(address(guest));
     }
 
     function testConstructor() public {
@@ -416,13 +414,18 @@ contract DomainGuestTest is DSSTest {
     }
 
     function testExit() public {
+        guest.lift(0, 100 ether);
+        end.setDebt(50 * RAD);
+        claimToken.mint(address(end), 100 * RAD);
+        end.approve(address(claimToken), address(guest));
+
         assertEq(claimToken.balanceOf(address(123)), 0);
 
         vm.expectEmit(true, true, true, true);
         emit Exit(address(123), 100 ether);
         guest.exit(address(123), 100 ether);
 
-        assertEq(claimToken.balanceOf(address(123)), 100 ether);
+        assertEq(claimToken.balanceOf(address(123)), 50 * RAD);
     }
 
     function testDeposit() public {
