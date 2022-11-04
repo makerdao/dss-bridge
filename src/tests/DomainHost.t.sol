@@ -26,32 +26,39 @@ contract EmptyDomainHost is DomainHost {
         return forceIsGuest;
     }
 
-    function lift(uint256 wad) external {
-        lastPayload = _lift(wad);
-    }
-    function rectify() external {
-        lastPayload = _rectify();
-    }
-    function cage() external {
-        lastPayload = _cage();
-    }
-    function exit(address usr, uint256 wad) external {
-        lastPayload = _exit(usr, wad);
-    }
-    function undoExit(address originalSender, uint256 wad) external {
-        _undoExit(originalSender, wad);
-    }
     function deposit(address to, uint256 amount) external {
-        lastPayload = _deposit(to, amount);
+        (address _to, uint256 _amount) = _deposit(to, amount);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.deposit.selector, _to, _amount);
     }
     function undoDeposit(address originalSender, uint256 amount) external {
         _undoDeposit(originalSender, amount);
     }
+    function lift(uint256 wad) external {
+        (uint256 _rid, uint256 _wad) = _lift(wad);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, _wad);
+    }
+    function rectify() external {
+        (uint256 _rid, uint256 _wad) = _rectify();
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.rectify.selector, _rid, _wad);
+    }
+    function cage() external {
+        (uint256 _rid) = _cage();
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.cage.selector, _rid);
+    }
+    function exit(address usr, uint256 wad) external {
+        (address _usr, uint256 _wad) = _exit(usr, wad);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.exit.selector, _usr, _wad);
+    }
+    function undoExit(address originalSender, uint256 wad) external {
+        _undoExit(originalSender, wad);
+    }
     function initializeRegisterMint(TeleportGUID calldata teleport) external {
-        lastPayload = _initializeRegisterMint(teleport);
+        (TeleportGUID calldata _teleport) = _initializeRegisterMint(teleport);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.finalizeRegisterMint.selector, _teleport);
     }
     function initializeSettle(uint256 index) external {
-        lastPayload = _initializeSettle(index);
+        (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) = _initializeSettle(index);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.finalizeSettle.selector, _sourceDomain, _targetDomain, _amount);
     }
     function undoInitializeSettle(uint256 index) external {
         _undoInitializeSettle(index);

@@ -19,7 +19,7 @@
 
 pragma solidity ^0.8.15;
 
-import {DomainGuest,TeleportGUID} from "../../DomainGuest.sol";
+import {DomainGuest,DomainHostLike,TeleportGUID} from "../../DomainGuest.sol";
 
 interface L2MessengerLike {
     function sendMessage(address target, bytes calldata message, uint32 gasLimit) external;
@@ -71,91 +71,73 @@ contract OptimismDomainGuest is DomainGuest {
     }
 
     function withdraw(address to, uint256 amount) external {
-        l2messenger.sendMessage(
-            host,
-            _withdraw(to, amount),
-            glWithdraw
-        );
+        withdraw(to, amount, glWithdraw);
     }
-    function withdraw(address to, uint256 amount, uint32 gasLimit) external {
+    function withdraw(address to, uint256 amount, uint32 gasLimit) public {
+        (address _to, uint256 _amount) = _withdraw(to, amount);
         l2messenger.sendMessage(
             host,
-            _withdraw(to, amount),
+            abi.encodeWithSelector(DomainHostLike.withdraw.selector, _to, _amount),
             gasLimit
         );
     }
 
     function release() external {
-        l2messenger.sendMessage(
-            host,
-            _release(),
-            glRelease
-        );
+        release(glRelease);
     }
-    function release(uint32 gasLimit) external {
+    function release(uint32 gasLimit) public {
+        (uint256 _rid, uint256 _burned) = _release();
         l2messenger.sendMessage(
             host,
-            _release(),
+            abi.encodeWithSelector(DomainHostLike.release.selector, _rid, _burned),
             gasLimit
         );
     }
 
     function push() external {
-        l2messenger.sendMessage(
-            host,
-            _push(),
-            glPush
-        );
+        push(glPush);
     }
-    function push(uint32 gasLimit) external {
+    function push(uint32 gasLimit) public {
+        (uint256 _rid, int256 _surplus) = _push();
         l2messenger.sendMessage(
             host,
-            _push(),
+            abi.encodeWithSelector(DomainHostLike.push.selector, _rid, _surplus),
             gasLimit
         );
     }
 
     function tell() external {
-        l2messenger.sendMessage(
-            host,
-            _tell(),
-            glTell
-        );
+        tell(glTell);
     }
-    function tell(uint32 gasLimit) external {
+    function tell(uint32 gasLimit) public {
+        (uint256 _rid, uint256 _cure) = _tell();
         l2messenger.sendMessage(
             host,
-            _tell(),
+            abi.encodeWithSelector(DomainHostLike.tell.selector, _rid, _cure),
             gasLimit
         );
     }
 
     function initializeRegisterMint(TeleportGUID calldata teleport) external {
-        l2messenger.sendMessage(
-            host,
-            _initializeRegisterMint(teleport),
-            glInitializeRegisterMint
-        );
+        initializeRegisterMint(teleport, glInitializeRegisterMint);
     }
-    function initializeRegisterMint(TeleportGUID calldata teleport, uint32 gasLimit) external {
+    function initializeRegisterMint(TeleportGUID calldata teleport, uint32 gasLimit) public {
+        (TeleportGUID calldata _teleport) = _initializeRegisterMint(teleport);
         l2messenger.sendMessage(
             host,
-            _initializeRegisterMint(teleport),
+            abi.encodeWithSelector(DomainHostLike.finalizeRegisterMint.selector, _teleport),
             gasLimit
         );
     }
 
     function initializeSettle(uint256 index) external {
-        l2messenger.sendMessage(
-            host,
-            _initializeSettle(index),
-            glInitializeSettle
-        );
+        initializeSettle(index, glInitializeSettle);
     }
-    function initializeSettle(uint256 index, uint32 gasLimit) external {
+    function initializeSettle(uint256 index, uint32 gasLimit) public {
+        (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) = _initializeSettle(index);
         l2messenger.sendMessage(
             host,
-            _initializeSettle(index),
+            abi.encodeWithSelector(DomainHostLike.finalizeSettle.selector, _sourceDomain, _targetDomain, _amount),
             gasLimit
         );
     }

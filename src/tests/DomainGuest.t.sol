@@ -26,23 +26,29 @@ contract EmptyDomainGuest is DomainGuest {
         return forceIsHost;
     }
 
+    function withdraw(address to, uint256 amount) external {
+        (address _to, uint256 _amount) = _withdraw(to, amount);
+        lastPayload = abi.encodeWithSelector(DomainHostLike.withdraw.selector, _to, _amount);
+    }
     function release() external {
-        lastPayload = _release();
+        (uint256 _rid, uint256 _burned) = _release();
+        lastPayload = abi.encodeWithSelector(DomainHostLike.release.selector, _rid, _burned);
     }
     function push() external {
-        lastPayload = _push();
+        (uint256 _rid, int256 _surplus) = _push();
+        lastPayload = abi.encodeWithSelector(DomainHostLike.push.selector, _rid, _surplus);
     }
     function tell() external {
-        lastPayload = _tell();
-    }
-    function withdraw(address to, uint256 amount) external {
-        lastPayload = _withdraw(to, amount);
+        (uint256 _rid, uint256 _cure) = _tell();
+        lastPayload = abi.encodeWithSelector(DomainHostLike.tell.selector, _rid, _cure);
     }
     function initializeRegisterMint(TeleportGUID calldata teleport) external {
-        lastPayload = _initializeRegisterMint(teleport);
+        (TeleportGUID calldata _teleport) = _initializeRegisterMint(teleport);
+        lastPayload = abi.encodeWithSelector(DomainHostLike.finalizeRegisterMint.selector, _teleport);
     }
     function initializeSettle(uint256 index) external {
-        lastPayload = _initializeSettle(index);
+        (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) = _initializeSettle(index);
+        lastPayload = abi.encodeWithSelector(DomainHostLike.finalizeSettle.selector, _sourceDomain, _targetDomain, _amount);
     }
 
 }

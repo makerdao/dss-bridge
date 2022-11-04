@@ -19,7 +19,7 @@
 
 pragma solidity ^0.8.15;
 
-import {DomainGuest,TeleportGUID} from "../../DomainGuest.sol";
+import {DomainGuest,DomainHostLike,TeleportGUID} from "../../DomainGuest.sol";
 
 interface ArbSysLike {
     function sendTxToL1(address target, bytes calldata message) external;
@@ -51,44 +51,50 @@ contract ArbitrumDomainGuest is DomainGuest {
     }
 
     function withdraw(address to, uint256 amount) external {
+        (address _to, uint256 _amount) = _withdraw(to, amount);
         arbSys.sendTxToL1(
             host,
-            _withdraw(to, amount)
+            abi.encodeWithSelector(DomainHostLike.withdraw.selector, _to, _amount)
         );
     }
 
     function release() external {
+        (uint256 _rid, uint256 _burned) = _release();
         arbSys.sendTxToL1(
             host,
-            _release()
+            abi.encodeWithSelector(DomainHostLike.release.selector, _rid, _burned)
         );
     }
 
     function push() external {
+        (uint256 _rid, int256 _surplus) = _push();
         arbSys.sendTxToL1(
             host,
-            _push()
+            abi.encodeWithSelector(DomainHostLike.push.selector, _rid, _surplus)
         );
     }
 
     function tell() external {
+        (uint256 _rid, uint256 _cure) = _tell();
         arbSys.sendTxToL1(
             host,
-            _tell()
+            abi.encodeWithSelector(DomainHostLike.tell.selector, _rid, _cure)
         );
     }
 
     function initializeRegisterMint(TeleportGUID calldata teleport) external {
+        (TeleportGUID calldata _teleport) = _initializeRegisterMint(teleport);
         arbSys.sendTxToL1(
             host,
-            _initializeRegisterMint(teleport)
+            abi.encodeWithSelector(DomainHostLike.finalizeRegisterMint.selector, _teleport)
         );
     }
 
     function initializeSettle(uint256 index) external {
+        (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) = _initializeSettle(index);
         arbSys.sendTxToL1(
             host,
-            _initializeSettle(index)
+            abi.encodeWithSelector(DomainHostLike.finalizeSettle.selector, _sourceDomain, _targetDomain, _amount)
         );
     }
 

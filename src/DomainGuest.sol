@@ -205,12 +205,13 @@ abstract contract DomainGuest {
     /// @notice Withdraw DAI by burning local canonical DAI
     /// @param to The address to send the DAI to on the remote domain
     /// @param amount The amount of DAI to withdraw [WAD]
-    function _withdraw(address to, uint256 amount) internal returns (bytes memory payload) {
+    function _withdraw(address to, uint256 amount) internal returns (address _to, uint256 _amount) {
         require(dai.transferFrom(msg.sender, address(this), amount), "DomainGuest/transfer-failed");
         daiJoin.join(address(this), amount);
         vat.swell(address(this), -_int256(amount * RAY));
 
-        payload = abi.encodeWithSelector(DomainHostLike.withdraw.selector, to, amount);
+        _to = to;
+        _amount = amount;
 
         emit Withdraw(to, amount);
     }
@@ -233,7 +234,7 @@ abstract contract DomainGuest {
 
     /// @notice Will release remote DAI from the escrow when it is safe to do so
     /// @dev    Should be run by keeper on a regular schedule.
-    function _release() internal returns (bytes memory payload) {
+    function _release() internal returns (uint256 _rid, uint256 _burned) {
         require(live == 1, "DomainGuest/not-live");
 
         uint256 limit = _max(vat.Line() / RAY, _divup(vat.debt(), RAY));
@@ -241,15 +242,18 @@ abstract contract DomainGuest {
         uint256 burned = grain - limit;
         grain = limit;
 
-        payload = abi.encodeWithSelector(DomainHostLike.release.selector, rid++, burned);
+        _rid = rid++;
+        _burned = burned;
 
         emit Release(burned);
     }
 
     /// @notice Push surplus (or deficit) to the host dss
     /// @dev Should be run by keeper on a regular schedule
-    function _push() internal returns (bytes memory payload) {
+    function _push() internal returns (uint256 _rid, int256 _surplus) {
         require(live == 1, "DomainGuest/not-live");
+
+        _rid = rid++;
 
         uint256 _dai = vat.dai(address(this));
         uint256 _sin = vat.sin(address(this));
@@ -261,7 +265,7 @@ abstract contract DomainGuest {
 
             // Burn the DAI and unload on the other side
             vat.swell(address(this), -_int256(wad * RAY));
-            payload = abi.encodeWithSelector(DomainHostLike.push.selector, rid++, _int256(wad));
+            _surplus = _int256(wad);
 
             emit Push(int256(wad));
         } else if (_sin >= _dai + dust) {
@@ -269,7 +273,7 @@ abstract contract DomainGuest {
             if (_dai > 0) vat.heal(_dai);
 
             int256 deficit = -_int256(_divup(_sin - _dai, RAY));    // Round up to overcharge for deficit
-            payload = abi.encodeWithSelector(DomainHostLike.push.selector, rid++, deficit);
+            _surplus = deficit;
 
             emit Push(deficit);
         } else {
@@ -299,13 +303,14 @@ abstract contract DomainGuest {
 
     /// @notice Set the cure value for the host
     /// @dev Triggered during shutdown
-    function _tell() internal returns (bytes memory payload) {
+    function _tell() internal returns (uint256 _rid, uint256 _cure) {
         uint256 debt = end.debt();
         require(debt > 0 || (vat.debt() == 0 && live == 0), "DomainGuest/end-debt-zero");
         uint256 _grain = grain * RAY;
         uint256 cure = _grain > debt ? _grain - debt : 0;
 
-        payload = abi.encodeWithSelector(DomainHostLike.tell.selector, rid++, cure);
+        _rid = rid++;
+        _cure = cure;
 
         emit Tell(cure);
     }
@@ -337,11 +342,11 @@ abstract contract DomainGuest {
 
         emit RegisterMint(teleport);
     }
-    function _initializeRegisterMint(TeleportGUID calldata teleport) internal returns (bytes memory payload) {
+    function _initializeRegisterMint(TeleportGUID calldata teleport) internal returns (TeleportGUID calldata _teleport) {
         // There is no issue with resending these messages as the end TeleportJoin will enforce only-once execution
         require(teleports[getGUIDHash(teleport)], "DomainGuest/teleport-not-registered");
 
-        payload = abi.encodeWithSelector(DomainHostLike.finalizeRegisterMint.selector, teleport);
+        _teleport = teleport;
 
         emit InitializeRegisterMint(teleport);
     }
@@ -363,13 +368,15 @@ abstract contract DomainGuest {
 
         emit Settle(sourceDomain, targetDomain, amount);
     }
-    function _initializeSettle(uint256 index) internal returns (bytes memory payload) {
+    function _initializeSettle(uint256 index) internal returns (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) {
         require(index < settlementQueue.length, "DomainGuest/settlement-not-found");
         Settlement memory settlement = settlementQueue[index];
         require(!settlement.sent, "DomainGuest/settlement-already-sent");
         settlementQueue[index].sent = true;
 
-        payload = abi.encodeWithSelector(DomainHostLike.finalizeSettle.selector, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
+        _sourceDomain = settlement.sourceDomain;
+        _targetDomain = settlement.targetDomain;
+        _amount = settlement.amount;
 
         emit InitializeSettle(index, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
     }
