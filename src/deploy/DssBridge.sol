@@ -5,8 +5,6 @@ pragma solidity ^0.8.15;
 import "dss-interfaces/Interfaces.sol";
 import { DssInstance } from "dss-test/MCD.sol";
 
-import { BridgeOracle } from "../BridgeOracle.sol";
-import { ClaimToken } from "../ClaimToken.sol";
 import { DomainHost } from "../DomainHost.sol";
 import { DomainGuest } from "../DomainGuest.sol";
 
@@ -16,10 +14,9 @@ import { ArbitrumDomainHost } from "../domains/arbitrum/ArbitrumDomainHost.sol";
 import { ArbitrumDomainGuest } from "../domains/arbitrum/ArbitrumDomainGuest.sol";
 
 struct BridgeInstance {
-    BridgeOracle oracle;
-    ClaimToken claimToken;
     DomainGuest guest;
     DomainHost host;
+    address oracle;
 }
 
 interface EscrowLike {
@@ -30,6 +27,16 @@ struct DssBridgeHostConfig {
     address escrow;
     uint256 debtCeiling;    // RAD
 }
+
+contract DSValue {
+    function peek() external pure returns (bytes32, bool) {
+        return (bytes32(uint256(1e18)), true);
+    }
+    function read() external pure returns (bytes32) {
+        return bytes32(uint256(1e18));
+    }
+}
+
 
 // Tools for deploying and setting up a dss-bridge instance
 library DssBridge {
@@ -58,7 +65,7 @@ library DssBridge {
             l1Messenger,
             guest
         );
-        bridge.oracle = new BridgeOracle(address(bridge.host));
+        bridge.oracle = address(new DSValue());
 
         switchOwner(address(bridge.host), deployer, owner);
     }
@@ -67,21 +74,20 @@ library DssBridge {
         address deployer,
         address owner,
         address daiJoin,
+        address claimToken,
         address router,
         address l2Messenger,
         address host
     ) internal returns (BridgeInstance memory bridge) {
-        bridge.claimToken = new ClaimToken();
         bridge.guest = new OptimismDomainGuest(
             daiJoin,
-            address(bridge.claimToken),
+            claimToken,
             router,
             l2Messenger,
             host
         );
 
         switchOwner(address(bridge.guest), deployer, owner);
-        switchOwner(address(bridge.claimToken), deployer, owner);
     }
 
     function deployArbitrumHost(
@@ -102,7 +108,7 @@ library DssBridge {
             inbox,
             guest
         );
-        bridge.oracle = new BridgeOracle(address(bridge.host));
+        bridge.oracle = address(new DSValue());
 
         switchOwner(address(bridge.host), deployer, owner);
     }
@@ -111,21 +117,20 @@ library DssBridge {
         address deployer,
         address owner,
         address daiJoin,
+        address claimToken,
         address router,
         address arbSys,
         address host
     ) internal returns (BridgeInstance memory bridge) {
-        bridge.claimToken = new ClaimToken();
         bridge.guest = new ArbitrumDomainGuest(
             daiJoin,
-            address(bridge.claimToken),
+            claimToken,
             router,
             arbSys,
             host
         );
 
         switchOwner(address(bridge.guest), deployer, owner);
-        switchOwner(address(bridge.claimToken), deployer, owner);
     }
 
     function initHost(
@@ -140,7 +145,7 @@ library DssBridge {
         dss.vat.init(ilk);
         dss.jug.init(ilk);
         dss.vat.rely(address(bridge.host));
-        dss.spotter.file(ilk, "pip", address(bridge.oracle));
+        dss.spotter.file(ilk, "pip", bridge.oracle);
         dss.spotter.file(ilk, "mat", 10 ** 27);
         dss.spotter.poke(ilk);
         dss.vat.file(ilk, "line", cfg.debtCeiling);
@@ -152,8 +157,6 @@ library DssBridge {
         DssInstance memory dss,
         BridgeInstance memory bridge
     ) internal {
-        bridge.claimToken.rely(address(bridge.guest));
-        dss.end.file("claim", address(bridge.claimToken));
         dss.end.file("vow", address(bridge.guest));
         bridge.guest.file("end", address(dss.end));
         bridge.guest.rely(address(dss.end));

@@ -36,6 +36,7 @@ contract OptimismIntegrationTest is IntegrationBaseTest {
             address(this),
             guestDomain.readConfigAddress("admin"),
             address(dss.daiJoin),
+            address(claimToken),
             address(rteleport.router),
             address(OptimismDomain(address(guestDomain)).l2Messenger()),
             hostAddr

@@ -4,6 +4,10 @@ pragma solidity >=0.8.0;
 
 import "./VatMock.sol";
 
+interface TokenLike {
+    function approve(address, uint256) external returns (bool);
+}
+
 contract EndMock {
 
     VatMock public vat;
@@ -21,6 +25,10 @@ contract EndMock {
 
     function setDebt(uint256 d) external {
         debt = d;
+    }
+
+    function approve(address token, address target) external {
+        TokenLike(token).approve(target, type(uint256).max);
     }
 
 }

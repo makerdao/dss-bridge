@@ -310,12 +310,16 @@ abstract contract DomainGuest {
         emit Tell(cure);
     }
 
-    /// @notice Mint a claim token for the given user
-    /// @dev    Claim amount is in units of local debt.
+    /// @notice Transfer a claim token for the given user
+    /// @dev    This will transfer a scaled claim from the end.
     /// @param usr The destination to send the claim tokens to
     /// @param wad The amount of claim tokens to mint
     function exit(address usr, uint256 wad) external hostOnly {
-        claimToken.mint(usr, wad);
+        // Convert to actual debt amount
+        // Round against the user
+        uint256 claimAmount = wad * (end.debt() / grain);
+
+        claimToken.transferFrom(address(end), usr, claimAmount);
 
         emit Exit(usr, wad);
     }

@@ -32,6 +32,7 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
             address(this),
             guestDomain.readConfigAddress("admin"),
             address(dss.daiJoin),
+            address(claimToken),
             address(rteleport.router),
             address(ArbitrumDomain(address(guestDomain)).arbSys()),
             hostAddr

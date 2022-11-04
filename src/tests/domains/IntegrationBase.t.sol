@@ -3,13 +3,13 @@
 pragma solidity ^0.8.15;
 
 import "dss-test/DSSTest.sol";
-import "ds-value/value.sol";
 import { MCD, DssInstance } from "dss-test/MCD.sol";
 
 import { DaiAbstract, EndAbstract } from "dss-interfaces/Interfaces.sol";
 import { Domain } from "dss-test/domains/Domain.sol";
 import { RootDomain } from "dss-test/domains/RootDomain.sol";
 import { BridgedDomain } from "dss-test/domains/BridgedDomain.sol";
+import { ClaimToken } from "xdomain-dss/ClaimToken.sol";
 import { Cure } from "xdomain-dss/Cure.sol";
 import { Dai } from "xdomain-dss/Dai.sol";
 import { DaiJoin } from "xdomain-dss/DaiJoin.sol";
@@ -19,10 +19,8 @@ import { Jug } from "xdomain-dss/Jug.sol";
 import { Spotter } from "xdomain-dss/Spotter.sol";
 import { Vat } from "xdomain-dss/Vat.sol";
 
-import { ClaimToken } from "../../ClaimToken.sol";
 import { DomainHost, TeleportGUID } from "../../DomainHost.sol";
 import { DomainGuest } from "../../DomainGuest.sol";
-import { BridgeOracle } from "../../BridgeOracle.sol";
 
 import { XDomainDss, DssInstance, XDomainDssConfig } from "../../deploy/XDomainDss.sol";
 import {
@@ -63,13 +61,16 @@ abstract contract IntegrationBaseTest is DSSTest {
     bytes32 ilk;
     bytes32 domain;
     address escrow;
+    address admin;
 
     // Guest-side contracts
     DssInstance rdss;
     TeleportInstance rteleport;
     BridgeInstance rbridge;
     DomainGuest guest;
+    ClaimToken claimToken;
     bytes32 rdomain;
+    address radmin;
 
     bytes32 constant GUEST_COLL_ILK = "ETH-A";
 
@@ -95,11 +96,13 @@ abstract contract IntegrationBaseTest is DSSTest {
 
         domain = hostDomain.readConfigBytes32FromString("domain");
         rdomain = guestDomain.readConfigBytes32FromString("domain");
+        admin = hostDomain.readConfigAddress("admin");
+        radmin = guestDomain.readConfigAddress("admin");
 
         // Deploy all contracts
         teleport = DssTeleport.deploy(
             address(this),
-            hostDomain.readConfigAddress("admin"),
+            admin,
             hostDomain.readConfigBytes32FromString("teleportIlk"),
             domain,
             hostDomain.readConfigBytes32FromString("teleportParentDomain"),
@@ -115,12 +118,15 @@ abstract contract IntegrationBaseTest is DSSTest {
         guestDomain.selectFork();
         rdss = XDomainDss.deploy(
             address(this),
-            guestDomain.readConfigAddress("admin"),
+            radmin,
             guestDomain.readConfigAddress("dai")
         );
+        claimToken = new ClaimToken();       // TODO move this into DssInstance when settled
+        claimToken.rely(radmin);
+        claimToken.deny(address(this));
         rteleport = DssTeleport.deploy(
             address(this),
-            guestDomain.readConfigAddress("admin"),
+            radmin,
             guestDomain.readConfigBytes32FromString("teleportIlk"),
             rdomain,
             guestDomain.readConfigBytes32FromString("teleportParentDomain"),
@@ -133,7 +139,7 @@ abstract contract IntegrationBaseTest is DSSTest {
 
         // Mimic the spells (Host + Guest)
         hostDomain.selectFork();
-        vm.startPrank(hostDomain.readConfigAddress("admin"));
+        vm.startPrank(admin);
         DssTeleport.init(
             dss,
             teleport,
@@ -164,8 +170,9 @@ abstract contract IntegrationBaseTest is DSSTest {
         vm.stopPrank();
 
         guestDomain.selectFork();
-        vm.startPrank(guestDomain.readConfigAddress("admin"));
+        vm.startPrank(radmin);
         XDomainDss.init(rdss, XDomainDssConfig({
+            claimToken: address(claimToken),
             endWait: 1 hours
         }));
         DssTeleport.init(
@@ -389,7 +396,6 @@ abstract contract IntegrationBaseTest is DSSTest {
     function testGlobalShutdown() public {
         assertEq(host.live(), 1);
         assertEq(dss.vat.live(), 1);
-        assertEq(bridge.oracle.read(), bytes32(WAD));
 
         // Set up some debt in the guest instance
         hostLift(100 ether);
@@ -410,9 +416,6 @@ abstract contract IntegrationBaseTest is DSSTest {
         dss.end.cage();
         host.deny(address(this));       // Confirm cage can be done permissionlessly
         hostCage();
-
-        // Verify cannot cage the host ilk until a final cure is reported
-        assertRevert(address(dss.end), abi.encodeWithSignature("cage(bytes32)", ilk), "BridgeOracle/haz-not");
 
         assertEq(dss.vat.live(), 0);
         assertEq(host.live(), 0);
@@ -456,12 +459,12 @@ abstract contract IntegrationBaseTest is DSSTest {
 
         dss.end.cage(ilk);
 
-        assertEq(dss.end.tag(ilk), 25 * RAY / 10);   // Tag should be 2.5 (1 / $1 * 40% debt used)
+        assertEq(dss.end.tag(ilk), RAY);
         assertEq(dss.end.gap(ilk), 0);
 
         dss.end.skim(ilk, address(host));
 
-        assertEq(dss.end.gap(ilk), 150 * WAD);
+        assertEq(dss.end.gap(ilk), 0);
         (ink, art) = dss.vat.urns(ilk, address(host));
         assertEq(ink, 0);
         assertEq(art, 0);
@@ -484,8 +487,6 @@ abstract contract IntegrationBaseTest is DSSTest {
 
         dss.end.flow(ilk);
 
-        assertEq(dss.end.fix(ilk), (100 * RAD) / (dss.end.debt() / RAY));
-
         // --- Do user redemption for guest domain collateral ---
 
         // Pretend you own 50% of all outstanding debt (should be a pro-rate claim on $20 for the guest domain)
@@ -498,7 +499,7 @@ abstract contract IntegrationBaseTest is DSSTest {
         dss.end.pack(myDai);
         assertEq(dss.end.bag(address(this)), myDai);
 
-        // Should get 50 gems valued at $0.40 each
+        // Should get 50 gems
         assertEq(dss.vat.gem(ilk, address(this)), 0);
         dss.end.cash(ilk, myDai);
         uint256 gems = dss.vat.gem(ilk, address(this));
@@ -508,11 +509,11 @@ abstract contract IntegrationBaseTest is DSSTest {
         hostExit(address(this), gems);
         assertEq(dss.vat.gem(ilk, address(this)), 0);
         guestDomain.relayFromHost(true);
-        uint256 tokens = rbridge.claimToken.balanceOf(address(this));
-        assertApproxEqAbs(tokens, 20 ether, WAD / 10000);
+        uint256 tokens = claimToken.balanceOf(address(this)) / RAY;
+        assertApproxEqAbs(tokens, 20 * WAD, WAD / 10000);
 
         // Can now get some collateral on the guest domain
-        rbridge.claimToken.approve(address(rdss.end), type(uint256).max);
+        claimToken.approve(address(rdss.end), type(uint256).max);
         assertEq(rdss.end.bag(address(this)), 0);
         rdss.end.pack(tokens);
         assertEq(rdss.end.bag(address(this)), tokens);

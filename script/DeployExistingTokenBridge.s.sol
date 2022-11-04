@@ -4,6 +4,7 @@ pragma solidity ^0.8.15;
 
 import "forge-std/Script.sol";
 import "dss-test/domains/Domain.sol";
+import { ClaimToken } from "xdomain-dss/ClaimToken.sol";
 
 import { XDomainDss, DssInstance } from "../src/deploy/XDomainDss.sol";
 import { DssTeleport, TeleportInstance } from "../src/deploy/DssTeleport.sol";
@@ -41,7 +42,7 @@ contract DeployExistingTokenBridge is Script {
         guestType = keccak256(abi.encodePacked(guestDomain.readConfigString("type")));
 
         guestDomain.selectFork();
-        address guestAddr = computeCreateAddress(msg.sender, vm.getNonce(msg.sender) + 34);
+        address guestAddr = computeCreateAddress(msg.sender, vm.getNonce(msg.sender) + 36);
         address hostAddr;
 
         // Host domain deploy
@@ -86,6 +87,9 @@ contract DeployExistingTokenBridge is Script {
             guestAdmin,
             guestDomain.readConfigAddress("dai")
         );
+        ClaimToken claimToken = new ClaimToken();       // TODO move this into DssInstance when settled
+        claimToken.rely(guestAdmin);
+        claimToken.deny(address(msg.sender));
         TeleportInstance memory teleport = DssTeleport.deploy(
             msg.sender,
             guestAdmin,
@@ -99,6 +103,7 @@ contract DeployExistingTokenBridge is Script {
                 msg.sender,
                 guestAdmin,
                 address(dss.daiJoin),
+                address(claimToken),
                 address(teleport.router),
                 guestDomain.readConfigAddress("l2Messenger"),
                 hostAddr
@@ -109,6 +114,7 @@ contract DeployExistingTokenBridge is Script {
                 msg.sender,
                 guestAdmin,
                 address(dss.daiJoin),
+                address(claimToken),
                 address(teleport.router),
                 guestDomain.readConfigAddress("arbSys"),
                 hostAddr
