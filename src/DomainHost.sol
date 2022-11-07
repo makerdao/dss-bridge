@@ -185,10 +185,11 @@ abstract contract DomainHost {
     /// @notice Deposit local DAI to mint remote canonical DAI
     /// @param to The address to send the DAI to on the remote domain
     /// @param amount The amount of DAI to deposit [WAD]
-    function _deposit(address to, uint256 amount) internal returns (bytes memory payload) {
+    function _deposit(address to, uint256 amount) internal returns (address _to, uint256 _amount) {
         require(dai.transferFrom(msg.sender, escrow, amount), "DomainHost/transfer-failed");
 
-        payload = abi.encodeWithSelector(DomainGuestLike.deposit.selector, to, amount);
+        _to = to;
+        _amount = amount;
 
         emit Deposit(to, amount);
     }
@@ -222,7 +223,7 @@ abstract contract DomainHost {
     /// @dev Please note that pre-mint DAI cannot be removed from the remote domain
     /// until the remote domain signals that it is safe to do so
     /// @param wad The new debt ceiling [WAD]
-    function _lift(uint256 wad) internal auth returns (bytes memory payload) {
+    function _lift(uint256 wad) internal auth returns (uint256 _rid, uint256 _wad) {
         require(vat.live() == 1, "DomainHost/vat-not-live");
 
         uint256 rad = wad * RAY;
@@ -241,7 +242,8 @@ abstract contract DomainHost {
 
         line = rad;
 
-        payload = abi.encodeWithSelector(DomainGuestLike.lift.selector, rid++, wad);
+        _rid = rid++;
+        _wad = wad;
 
         emit Lift(wad);
     }
@@ -289,7 +291,7 @@ abstract contract DomainHost {
     /// @notice Move bad debt from the remote domain into the local vow
     /// @dev This is a potentially dangerous operation as a malicious domain can drain the entire surplus buffer
     /// Because of this we require an authed party to perform this operation
-    function _rectify() internal auth returns (bytes memory payload) {
+    function _rectify() internal auth returns (uint256 _rid, uint256 _wad) {
         require(vat.live() == 1, "DomainHost/vat-not-live");
 
         uint256 wad = sin;
@@ -298,21 +300,21 @@ abstract contract DomainHost {
         daiJoin.exit(address(escrow), wad);
         sin = 0;
         
-        // Send ERC20 DAI to the remote DomainGuest
-        payload = abi.encodeWithSelector(DomainGuestLike.rectify.selector, rid++, wad);
+        _rid = rid++;
+        _wad = wad;
 
         emit Rectify(wad);
     }
 
     /// @notice Initiate shutdown for this domain
     /// @dev This will trigger the end module on the remote domain
-    function _cage() internal returns (bytes memory payload) {
+    function _cage() internal returns (uint256 _rid) {
         require(vat.live() == 0 || wards[msg.sender] == 1, "DomainHost/not-authorized");
         require(live == 1, "DomainHost/not-live");
 
         live = 0;
 
-        payload = abi.encodeWithSelector(DomainGuestLike.cage.selector, rid++);
+        _rid = rid++;
 
         emit Cage();
     }
@@ -334,11 +336,12 @@ abstract contract DomainHost {
     /// @notice Allow DAI holders to exit during global settlement
     /// @param usr The address to send the claim token to
     /// @param wad The amount of gems to exit [WAD]
-    function _exit(address usr, uint256 wad) internal returns (bytes memory payload) {
+    function _exit(address usr, uint256 wad) internal returns (address _usr, uint256 _wad) {
         require(vat.live() == 0, "DomainHost/vat-live");
         vat.slip(ilk, msg.sender, -_int256(wad));
         
-        payload = abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, wad);
+        _usr = usr;
+        _wad = wad;
 
         emit Exit(usr, wad);
     }
@@ -365,11 +368,11 @@ abstract contract DomainHost {
 
         emit RegisterMint(teleport);
     }
-    function _initializeRegisterMint(TeleportGUID calldata teleport) internal returns (bytes memory payload) {
+    function _initializeRegisterMint(TeleportGUID calldata teleport) internal returns (TeleportGUID calldata _teleport) {
         // There is no issue with resending these messages as the end TeleportJoin will enforce only-once execution
         require(teleports[getGUIDHash(teleport)], "DomainHost/teleport-not-registered");
 
-        payload = abi.encodeWithSelector(DomainGuestLike.finalizeRegisterMint.selector, teleport);
+        _teleport = teleport;
 
         emit InitializeRegisterMint(teleport);
     }
@@ -390,13 +393,15 @@ abstract contract DomainHost {
 
         emit Settle(sourceDomain, targetDomain, amount);
     }
-    function _initializeSettle(uint256 index) internal returns (bytes memory payload) {
+    function _initializeSettle(uint256 index) internal returns (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) {
         require(index < settlementQueue.length, "DomainHost/settlement-not-found");
         Settlement memory settlement = settlementQueue[index];
         require(!settlement.sent, "DomainHost/settlement-already-sent");
         settlementQueue[index].sent = true;
 
-        payload = abi.encodeWithSelector(DomainGuestLike.finalizeSettle.selector, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
+        _sourceDomain = settlement.sourceDomain;
+        _targetDomain = settlement.targetDomain;
+        _amount = settlement.amount;
 
         emit InitializeSettle(index, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
     }

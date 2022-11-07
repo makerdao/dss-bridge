@@ -19,7 +19,7 @@
 
 pragma solidity ^0.8.15;
 
-import {DomainHost,TeleportGUID} from "../../DomainHost.sol";
+import {DomainHost,DomainGuestLike,TeleportGUID} from "../../DomainHost.sol";
 
 interface InboxLike {
     function createRetryableTicket(
@@ -96,6 +96,7 @@ contract ArbitrumDomainHost is DomainHost {
         uint256 maxGas,
         uint256 gasPriceBid
     ) public payable {
+        (address _to, uint256 _amount) = _deposit(to, amount);
         inbox.createRetryableTicket{value: msg.value}(
             guest,
             0, // we always assume that l2CallValue = 0
@@ -104,7 +105,7 @@ contract ArbitrumDomainHost is DomainHost {
             msg.sender,
             maxGas,
             gasPriceBid,
-            _deposit(to, amount)
+            abi.encodeWithSelector(DomainGuestLike.deposit.selector, _to, _amount)
         );
     }
     function deposit(
@@ -128,6 +129,7 @@ contract ArbitrumDomainHost is DomainHost {
         uint256 maxGas,
         uint256 gasPriceBid
     ) public payable {
+        (uint256 _rid, uint256 _wad) = _lift(wad);
         inbox.createRetryableTicket{value: msg.value}(
             guest,
             0, // we always assume that l2CallValue = 0
@@ -136,7 +138,7 @@ contract ArbitrumDomainHost is DomainHost {
             msg.sender,
             maxGas,
             gasPriceBid,
-            _lift(wad)
+            abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, _wad)
         );
     }
     function lift(
@@ -157,6 +159,7 @@ contract ArbitrumDomainHost is DomainHost {
         uint256 maxGas,
         uint256 gasPriceBid
     ) public payable {
+        (uint256 _rid, uint256 _wad) = _rectify();
         inbox.createRetryableTicket{value: msg.value}(
             guest,
             0, // we always assume that l2CallValue = 0
@@ -165,7 +168,7 @@ contract ArbitrumDomainHost is DomainHost {
             msg.sender,
             maxGas,
             gasPriceBid,
-            _rectify()
+            abi.encodeWithSelector(DomainGuestLike.rectify.selector, _rid, _wad)
         );
     }
     function rectify(
@@ -184,6 +187,7 @@ contract ArbitrumDomainHost is DomainHost {
         uint256 maxGas,
         uint256 gasPriceBid
     ) public payable {
+        (uint256 _rid) = _cage();
         inbox.createRetryableTicket{value: msg.value}(
             guest,
             0, // we always assume that l2CallValue = 0
@@ -192,7 +196,7 @@ contract ArbitrumDomainHost is DomainHost {
             msg.sender,
             maxGas,
             gasPriceBid,
-            _cage()
+            abi.encodeWithSelector(DomainGuestLike.cage.selector, _rid)
         );
     }
     function cage(
@@ -213,6 +217,7 @@ contract ArbitrumDomainHost is DomainHost {
         uint256 maxGas,
         uint256 gasPriceBid
     ) public payable {
+        (address _usr, uint256 _wad) = _exit(usr, wad);
         inbox.createRetryableTicket{value: msg.value}(
             guest,
             0, // we always assume that l2CallValue = 0
@@ -221,7 +226,7 @@ contract ArbitrumDomainHost is DomainHost {
             msg.sender,
             maxGas,
             gasPriceBid,
-            _exit(usr, wad)
+            abi.encodeWithSelector(DomainGuestLike.exit.selector, _usr, _wad)
         );
     }
     function exit(
@@ -245,6 +250,7 @@ contract ArbitrumDomainHost is DomainHost {
         uint256 maxGas,
         uint256 gasPriceBid
     ) public payable {
+        (TeleportGUID calldata _teleport) = _initializeRegisterMint(teleport);
         inbox.createRetryableTicket{value: msg.value}(
             guest,
             0, // we always assume that l2CallValue = 0
@@ -253,7 +259,7 @@ contract ArbitrumDomainHost is DomainHost {
             msg.sender,
             maxGas,
             gasPriceBid,
-            _initializeRegisterMint(teleport)
+            abi.encodeWithSelector(DomainGuestLike.finalizeRegisterMint.selector, _teleport)
         );
     }
     function initializeRegisterMint(
@@ -275,6 +281,7 @@ contract ArbitrumDomainHost is DomainHost {
         uint256 maxGas,
         uint256 gasPriceBid
     ) public payable {
+        (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) = _initializeSettle(index);
         inbox.createRetryableTicket{value: msg.value}(
             guest,
             0, // we always assume that l2CallValue = 0
@@ -283,7 +290,7 @@ contract ArbitrumDomainHost is DomainHost {
             msg.sender,
             maxGas,
             gasPriceBid,
-            _initializeSettle(index)
+            abi.encodeWithSelector(DomainGuestLike.finalizeSettle.selector, _sourceDomain, _targetDomain, _amount)
         );
     }
     function initializeSettle(

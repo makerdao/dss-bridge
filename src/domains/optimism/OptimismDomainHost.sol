@@ -19,7 +19,7 @@
 
 pragma solidity ^0.8.15;
 
-import {DomainHost,TeleportGUID} from "../../DomainHost.sol";
+import {DomainHost,DomainGuestLike,TeleportGUID} from "../../DomainHost.sol";
 
 interface L1MessengerLike {
     function sendMessage(address target, bytes calldata message, uint32 gasLimit) external;
@@ -72,106 +72,85 @@ contract OptimismDomainHost is DomainHost {
     }
 
     function deposit(address to, uint256 amount) external {
-        l1messenger.sendMessage(
-            guest,
-            _deposit(to, amount),
-            glDeposit
-        );
+        deposit(to, amount, glDeposit);
     }
-    function deposit(address to, uint256 amount, uint32 gasLimit) external {
+    function deposit(address to, uint256 amount, uint32 gasLimit) public {
+        (address _to, uint256 _amount) = _deposit(to, amount);
         l1messenger.sendMessage(
             guest,
-            _deposit(to, amount),
+            abi.encodeWithSelector(DomainGuestLike.deposit.selector, _to, _amount),
             gasLimit
         );
     }
 
     function lift(uint256 wad) external {
-        l1messenger.sendMessage(
-            guest,
-            _lift(wad),
-            glLift
-        );
+        lift(wad, glLift);
     }
-    function lift(uint256 wad, uint32 gasLimit) external {
+    function lift(uint256 wad, uint32 gasLimit) public {
+        (uint256 _rid, uint256 _wad) = _lift(wad);
         l1messenger.sendMessage(
             guest,
-            _lift(wad),
+            abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, _wad),
             gasLimit
         );
     }
 
     function rectify() external {
-        l1messenger.sendMessage(
-            guest,
-            _rectify(),
-            glRectify
-        );
+        rectify(glRectify);
     }
-    function rectify(uint32 gasLimit) external {
+    function rectify(uint32 gasLimit) public {
+        (uint256 _rid, uint256 _wad) = _rectify();
         l1messenger.sendMessage(
             guest,
-            _rectify(),
+            abi.encodeWithSelector(DomainGuestLike.rectify.selector, _rid, _wad),
             gasLimit
         );
     }
 
     function cage() external {
-        l1messenger.sendMessage(
-            guest,
-            _cage(),
-            glCage
-        );
+        cage(glCage);
     }
-    function cage(uint32 gasLimit) external {
+    function cage(uint32 gasLimit) public {
+        (uint256 _rid) = _cage();
         l1messenger.sendMessage(
             guest,
-            _cage(),
+            abi.encodeWithSelector(DomainGuestLike.cage.selector, _rid),
             gasLimit
         );
     }
 
     function exit(address usr, uint256 wad) external {
-        l1messenger.sendMessage(
-            guest,
-            _exit(usr, wad),
-            glExit
-        );
+        exit(usr, wad, glExit);
     }
-    function exit(address usr, uint256 wad, uint32 gasLimit) external {
+    function exit(address usr, uint256 wad, uint32 gasLimit) public {
+        (address _usr, uint256 _wad) = _exit(usr, wad);
         l1messenger.sendMessage(
             guest,
-            _exit(usr, wad),
+            abi.encodeWithSelector(DomainGuestLike.exit.selector, _usr, _wad),
             gasLimit
         );
     }
 
     function initializeRegisterMint(TeleportGUID calldata teleport) external {
-        l1messenger.sendMessage(
-            guest,
-            _initializeRegisterMint(teleport),
-            glInitializeRegisterMint
-        );
+        initializeRegisterMint(teleport, glInitializeRegisterMint);
     }
-    function initializeRegisterMint(TeleportGUID calldata teleport, uint32 gasLimit) external {
+    function initializeRegisterMint(TeleportGUID calldata teleport, uint32 gasLimit) public {
+        (TeleportGUID calldata _teleport) = _initializeRegisterMint(teleport);
         l1messenger.sendMessage(
             guest,
-            _initializeRegisterMint(teleport),
+            abi.encodeWithSelector(DomainGuestLike.finalizeRegisterMint.selector, _teleport),
             gasLimit
         );
     }
 
     function initializeSettle(uint256 index) external {
-        l1messenger.sendMessage(
-            guest,
-            _initializeSettle(index),
-            glInitializeSettle
-        );
+        initializeSettle(index, glInitializeSettle);
     }
-    function initializeSettle(uint256 index, uint32 gasLimit) external {
+    function initializeSettle(uint256 index, uint32 gasLimit) public {
+        (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) = _initializeSettle(index);
         l1messenger.sendMessage(
             guest,
-            _initializeSettle(index),
+            abi.encodeWithSelector(DomainGuestLike.finalizeSettle.selector, _sourceDomain, _targetDomain, _amount),
             gasLimit
         );
     }
