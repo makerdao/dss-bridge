@@ -261,7 +261,7 @@ abstract contract DomainGuest {
             // We have a surplus
             if (_sin > 0) vat.heal(_sin);
 
-            uint256 wad = (_dai - _sin) / RAY;    // Leave the dust
+            uint256 wad = (_dai - _sin) / RAY;    // Round against this contract for surplus
 
             // Burn the DAI and unload on the other side
             vat.swell(address(this), -_int256(wad * RAY));
