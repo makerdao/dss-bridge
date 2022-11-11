@@ -75,3 +75,19 @@ Standard withdrawal mechanism. Burns local canonical DAI and unlocks the escrowe
 ### Teleport Functions
 
 See the [dss-teleport respoitory](https://github.com/makerdao/dss-teleport) for more detailed information.
+
+## Migration from Canonical DAI
+
+The common strategy is to first deploy a canonical DAI bridge with direct minting rights on the guest domain DAI. This presents a problem because `dss-bridge` requires that `daiJoin` be the sole admin on `dai`. Since there may be in-flight messages to mint we cannot simply disable the canonical DAI bridge during upgrade nor do we want to do this as it will immediately break integrations.
+
+A staged upgrade process is proposed:
+
+1. `dss-bridge` along with all it's dependencies is deployed on the target chain with a debt ceiling of 0. This will give `daiJoin` minting rights on the existing `dai`. There is a problem though in that the `daiJoin` may not have enough `vat.dai` in it to call `daiJoin.join(...)` with existing DAI.
+
+We then call `vat.swell(daiJoin, someLargeNumber)` to make sure existing holders of `dai` can exit via `dss-bridge`. At this point users will be able to enter and exit via either bridge.
+
+2. We close out the canonical DAI bridge. This will restrict DAI minting to just `dss-bridge` at this point.
+
+3. After all the in-transit transactions have cleared (keepers can force any stragglers) we de-auth the canonical bridge from `dai`. We then set `vat.dai(daiJoin)` based on this equation `vat.dai(daiJoin) + vat.dai(not in daijoin) = vat.surf` or `vat.dai(daiJoin) = vat.surf - vat.dai(not in daijoin)`. This equation holds because we have no activated any debt features of the `vat` yet, so it will purely be bridged dai moving around.
+
+4. We can then increase the debt ceiling if desired.
