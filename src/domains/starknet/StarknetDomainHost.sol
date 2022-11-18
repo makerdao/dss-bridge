@@ -19,7 +19,7 @@
 
 pragma solidity ^0.8.15;
 
-import {DomainHost,DomainGuestLike,TeleportGUID} from "../../DomainHost.sol";
+import {DomainHost,DomainGuestLike,Settlement,TeleportGUID} from "../../DomainHost.sol";
 
 interface StarkNetLike {
     function sendMessageToL2(
@@ -94,32 +94,43 @@ contract StarknetDomainHost is DomainHost {
         l2Dai = _l2Dai;
     }
 
+    // TODO: not compatible with starkgate!
+
+    function depositPayload(uint256 to, uint256 amount, address sender) private returns (uint256[] memory) {
+        uint256[] memory payload = new uint256[](4);
+        payload[0] = to;
+        (payload[1], payload[2]) = split(amount);
+        payload[3] = uint256(uint160(sender)); // deposit cancelation access control
+
+        return payload;
+    }
 
     function deposit(uint256 to, uint256 amount) external payable validL2Address(to) {
-        (address _to, uint256 _amount) = _deposit(to, amount);
-
+        (uint256 _to, uint256 _amount) = _deposit(to, amount);
         require(_to != l2Dai, "StarknetDomainHost/invalid-address");
 
-        uint256[] memory payload = new uint256[](4);
-        payload[0] = _to;
-        (payload[1], payload[2]) = split(_amount);
-        payload[3] = uint256(uint160(msg.sender));
-
-        starkNet.sendMessageToL2{value: msg.value}(guest, DEPOSIT, payload);
-
+        starkNet.sendMessageToL2{value: msg.value}(
+            guest, DEPOSIT, depositPayload(_to, _amount, msg.sender)
+        );
     }
 
-    // compatibility with Starkgate
-    function deposit(
-        uint256 amount,
-        uint256 l2Recipient
-    ) external payable {
-        emit LogDeposit(msg.sender, amount, l2Recipient);
-        this.deposit{value: msg.value}(l2Recipient, amount);
+    function startUndoDeposit(uint256 to, uint256 amount, uint256 nonce) internal {
+        starkNet.startL1ToL2MessageCancellation(
+            guest, DEPOSIT, depositPayload(to, amount, msg.sender), nonce
+        );
     }
 
+    function undoDeposit(
+        address originalSender, uint256 to, uint256 amount, uint256 nonce
+    ) internal {
+        starkNet.cancelL1ToL2Message(
+            guest, DEPOSIT, depositPayload(to, amount, msg.sender), nonce
+        );
+        _undoDeposit(originalSender, amount);
+    }
+
+    // TODO: compatibility with Starkgate
     function withdraw(address to, uint256 amount) external {
-
         _withdraw(to, amount);
 
         uint256[] memory payload = new uint256[](4);
@@ -129,13 +140,6 @@ contract StarknetDomainHost is DomainHost {
 
         starkNet.consumeMessageFromL2(guest, payload);
     }
-
-    // compatibility with Starkgate
-    function withdraw(uint256 amount, address to) external {
-        emit LogWithdrawal(l1Recipient, amount);
-        this.withdraw(to, amount);
-    }
-
 
     function lift(uint256 wad) external payable {
         (uint256 _rid, uint256 _wad) = _lift(wad);
@@ -155,9 +159,6 @@ contract StarknetDomainHost is DomainHost {
         starkNet.sendMessageToL2{value: msg.value}(guest, RECTIFY, payload);
     }
 
-    // function cage() external {
-    //     cage(glCage);
-    // }
     function cage() external payable {
         (uint256 _rid) = _cage();
         uint256[] memory payload = new uint256[](2);
@@ -166,54 +167,98 @@ contract StarknetDomainHost is DomainHost {
         starkNet.sendMessageToL2{value: msg.value}(guest, CAGE, payload);
     }
 
-    // function exit(address usr, uint256 wad) external {
-    //     exit(usr, wad, glExit);
-    // }
-    function exit(uint256 usr, uint256 wad) external payable validL2Address(usr) {
-
-        // TODO: _usr should be an uint256
-        (address _usr, uint256 _wad) = _exit(usr, wad);
-
+    function exitPayload(
+        uint256 usr, uint256 wad, address sender
+    ) internal pure returns (uint256[] memory) {
         uint256[] memory payload = new uint256[](4);
         (payload[0], payload[1]) = split(usr);
-        (payload[2], payload[3]) = split(wad); // TODO: not using _wad!
-
-        starkNet.sendMessageToL2{value: msg.value}(guest, EXIT, payload);
+        (payload[2], payload[3]) = split(wad);
+        payload[4] = uint256(uint160(sender)); // cancelation access control
+        return payload;
     }
 
+    function exit(uint256 usr, uint256 wad) external payable validL2Address(usr) {
 
+        (uint256 _usr, uint256 _wad) = _exit(usr, wad);
+
+        starkNet.sendMessageToL2{value: msg.value}(
+            guest, EXIT, exitPayload(_usr, _wad, msg.sender)
+        );
+    }
+
+    function startUndoExit(uint256 usr, uint256 wad, uint256 nonce) internal {
+        StarkNetLike(starkNet).startL1ToL2MessageCancellation(
+            guest, EXIT, exitPayload(usr, wad, msg.sender), nonce
+        );
+    }
+
+    function undoExit(
+        address originalSender, uint256 usr, uint256 wad, uint256 nonce
+    ) internal {
+        StarkNetLike(starkNet).cancelL1ToL2Message(
+            guest, EXIT, exitPayload(usr, wad, msg.sender), nonce
+        );
+        _undoExit(originalSender, wad);
+    }
+
+    // TODO: data availability???
     function initializeRegisterMint(TeleportGUID calldata teleport) external payable {
 
         (TeleportGUID calldata _teleport) = _initializeRegisterMint(teleport);
 
         uint256[] memory payload = new uint256[](10);
-        (payload[0], payload[1]) = split(uint256(teleport.sourceDomain)); // bytes32 -> (uint256, uint256)
-        (payload[2], payload[3]) = split(uint256(teleport.targetDomain)); // bytes32 -> (uint256, uint256)
-        payload[4] = uint256(teleport.receiver); // bytes32 -> uint256
-        payload[5] = uint256(teleport.operator); // bytes32 -> uint256
-        payload[6] = uint256(teleport.amount); // uint128 -> uint256
-        payload[7] = uint256(teleport.nonce); // uint80 -> uint256
-        payload[8] = uint256(teleport.timestamp); // uint48 -> uint256
+        (payload[0], payload[1]) = split(uint256(teleport.sourceDomain));
+        (payload[2], payload[3]) = split(uint256(teleport.targetDomain));
+        payload[4] = uint256(teleport.receiver);
+        payload[5] = uint256(teleport.operator);
+        payload[6] = uint256(teleport.amount);
+        payload[7] = uint256(teleport.nonce);
+        payload[8] = uint256(teleport.timestamp);
 
         starkNet.sendMessageToL2{value: msg.value}(guest, INITIALIZE_REGISTER_MINT, payload);
-
     }
 
     function initializeSettle(uint256 index) external payable {
         (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) = _initializeSettle(index);
 
         uint256[] memory payload = new uint256[](6);
-        (payload[0], payload[1]) = split(uint256(_sourceDomain)); // bytes32 -> (uint256, uint256)
-        (payload[2], payload[3]) = split(uint256(_targetDomain)); // bytes32 -> (uint256, uint256)
-        (payload[4], payload[5]) = split(_amount); // bytes32 -> (uint256, uint256)
+        (payload[0], payload[1]) = split(uint256(_sourceDomain));
+        (payload[2], payload[3]) = split(uint256(_targetDomain));
+        (payload[4], payload[5]) = split(_amount);
 
         starkNet.sendMessageToL2{value: msg.value}(guest, INITIALIZE_SETTLE, payload);
     }
 
+    function startUndoInitializeSettle(uint256 index, uint256 nonce) external {
+        Settlement memory settlement = settlementQueue[index];
+        require(!settlement.sent, "DomainHost/settlement-already-sent");
 
+        uint256[] memory payload = new uint256[](6);
+        (payload[0], payload[1]) = split(uint256(settlement.sourceDomain));
+        (payload[2], payload[3]) = split(uint256(settlement.targetDomain));
+        (payload[4], payload[5]) = split(settlement.amount);
+
+        StarkNetLike(starkNet).startL1ToL2MessageCancellation(
+            guest, INITIALIZE_SETTLE, payload, nonce
+        );
+    }
+
+    function undoInitializeSettle(uint256 index, uint256 nonce) external {
+        Settlement memory settlement = settlementQueue[index];
+        require(!settlement.sent, "DomainHost/settlement-already-sent");
+
+        uint256[] memory payload = new uint256[](6);
+        (payload[0], payload[1]) = split(uint256(settlement.sourceDomain));
+        (payload[2], payload[3]) = split(uint256(settlement.targetDomain));
+        (payload[4], payload[5]) = split(settlement.amount);
+
+        StarkNetLike(starkNet).cancelL1ToL2Message(guest, INITIALIZE_SETTLE, payload, nonce);
+
+        _undoInitializeSettle(index);
+    }
 
     function release(uint256 _lid, uint256 wad) external {
-        self._release(_lid, wad);
+        _release(_lid, wad);
 
         uint256[] memory payload = new uint256[](5);
         payload[0] = RELEASE;
@@ -221,22 +266,21 @@ contract StarknetDomainHost is DomainHost {
         (payload[3], payload[4]) = split(wad);
 
         starkNet.consumeMessageFromL2(guest, payload);
-
     }
 
     function push(uint256 _lid, int256 wad) external {
-        self._push(_lid, wad);
+        _push(_lid, wad);
 
         uint256[] memory payload = new uint256[](5);
         payload[0] = PUSH;
         (payload[1], payload[2]) = split(_lid);
-        (payload[3], payload[4]) = split(wad);
+        (payload[3], payload[4]) = split(uint256(wad));
 
         starkNet.consumeMessageFromL2(guest, payload);
     }
 
-    function tell(uint256 _lid, uint256 value) external guestOnly ordered(_lid) {
-        self._push(_lid, value);
+    function tell(uint256 _lid, uint256 value) external ordered(_lid) {
+        _tell(_lid, value);
 
         uint256[] memory payload = new uint256[](5);
         payload[0] = TELL;
@@ -246,29 +290,31 @@ contract StarknetDomainHost is DomainHost {
         starkNet.consumeMessageFromL2(guest, payload);
     }
 
-    function finalizeRegisterMint(TeleportGUID calldata teleport) external guestOnly {
-        self._finalizeRegisterMint(teleport);
+    function finalizeRegisterMint(TeleportGUID calldata teleport) external {
+        _finalizeRegisterMint(teleport);
         uint256[] memory payload = new uint256[](10);
         payload[0] = REGISTER_MINT;
-        (payload[1], payload[2]) = split(uint256(teleport.sourceDomain)); // bytes32 -> (uint256, uint256)
-        (payload[3], payload[4]) = split(uint256(teleport.targetDomain)); // bytes32 -> (uint256, uint256)
-        payload[5] = uint256(teleport.receiver); // bytes32 -> uint256
-        payload[6] = uint256(teleport.operator); // bytes32 -> uint256
-        payload[7] = uint256(teleport.amount); // uint128 -> uint256
-        payload[8] = uint256(teleport.nonce); // uint80 -> uint256
-        payload[9] = uint256(teleport.timestamp); // uint48 -> uint256
+        (payload[1], payload[2]) = split(uint256(teleport.sourceDomain));
+        (payload[3], payload[4]) = split(uint256(teleport.targetDomain));
+        payload[5] = uint256(teleport.receiver);
+        payload[6] = uint256(teleport.operator);
+        payload[7] = uint256(teleport.amount);
+        payload[8] = uint256(teleport.nonce);
+        payload[9] = uint256(teleport.timestamp);
 
         starkNet.consumeMessageFromL2(guest, payload);
     }
 
-    function finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external guestOnly {
-        self._finalizeSettle(sourceDomain, targetDomain, amount);
+    function finalizeSettle(
+        bytes32 sourceDomain, bytes32 targetDomain, uint256 amount
+    ) external {
+        _finalizeSettle(sourceDomain, targetDomain, amount);
 
         uint256[] memory payload = new uint256[](5);
         payload[0] = FINALIZE_SETTLE;
-        (payload[1], payload[2]) = split(uint256(sourceDomain)); // bytes32 -> (uint256, uint256)
-        (payload[3], payload[4]) = split(uint256(targetDomain)); // bytes32 -> (uint256, uint256)
-        (payload[5], payload[6]) = split(amount); // bytes32 -> (uint256, uint256)
+        (payload[1], payload[2]) = split(uint256(sourceDomain));
+        (payload[3], payload[4]) = split(uint256(targetDomain));
+        (payload[5], payload[6]) = split(amount);
 
         starkNet.consumeMessageFromL2(guest, payload);
     }
@@ -279,7 +325,6 @@ contract StarknetDomainHost is DomainHost {
 
     modifier validL2Address(uint256 l2Address) {
         require(l2Address != 0 && l2Address < SN_PRIME, "StarknetDomainHost/invalid-address");
+        _;
     }
-
-
 }
