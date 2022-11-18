@@ -142,14 +142,14 @@ abstract contract DomainHost {
     constructor(bytes32 _ilk, address _daiJoin, address _escrow, address _router) {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
-        
+
         ilk = _ilk;
         daiJoin = DaiJoinLike(_daiJoin);
         vat = daiJoin.vat();
         dai = daiJoin.dai();
         escrow = _escrow;
         router = RouterLike(_router);
-        
+
         vat.hope(_daiJoin);
         dai.approve(_daiJoin, type(uint256).max);
         dai.approve(_router, type(uint256).max);
@@ -324,7 +324,7 @@ abstract contract DomainHost {
         vat.suck(vow, address(this), wad * RAY);
         daiJoin.exit(address(escrow), wad);
         sin = 0;
-        
+
         _rid = rid++;
         _wad = wad;
 

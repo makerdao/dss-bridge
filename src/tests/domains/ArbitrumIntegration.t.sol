@@ -66,7 +66,7 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
     }
 
     function hostExit(address usr, uint256 wad) internal virtual override {
-        ArbitrumDomainHost(address(host)).exit{value:1 ether}(usr, wad, 1 ether, 0);
+        ArbitrumDomainHost(address(host)).exit{value:1 ether}(uint256(uint160(usr)), wad, 1 ether, 0);
     }
 
     function hostDeposit(address to, uint256 amount) internal virtual override {

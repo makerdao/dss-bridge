@@ -297,7 +297,7 @@ contract DomainHostTest is DSSTest {
         (uint256 ink, uint256 art) = vat.urns(ILK, address(host));
         assertEq(ink, 100 ether);
         assertEq(art, 100 ether);
-        
+
         // Repay some dust
         vat.frob(ILK, address(host), address(this), address(this), 0, -int256(1 ether));
 
