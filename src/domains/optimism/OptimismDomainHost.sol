@@ -19,14 +19,15 @@
 
 pragma solidity ^0.8.15;
 
-import {DomainHost,DomainGuestLike,TeleportGUID} from "../../DomainHost.sol";
+import {DomainGuestLike,TeleportGUID} from "../../DomainHost.sol";
+import {OptimisticDomainHost} from "../../OptimisticDomainHost.sol";
 
 interface L1MessengerLike {
     function sendMessage(address target, bytes calldata message, uint32 gasLimit) external;
     function xDomainMessageSender() external view returns (address);
 }
 
-contract OptimismDomainHost is DomainHost {
+contract OptimismDomainHost is OptimisticDomainHost {
 
     // --- Data ---
     L1MessengerLike public immutable l1messenger;
@@ -50,7 +51,7 @@ contract OptimismDomainHost is DomainHost {
         address _router,
         address _l1messenger,
         address _guest
-    ) DomainHost(_ilk, _daiJoin, _escrow, _router) {
+    ) OptimisticDomainHost(_ilk, _daiJoin, _escrow, _router) {
         l1messenger = L1MessengerLike(_l1messenger);
         guest = _guest;
     }

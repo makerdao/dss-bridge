@@ -19,7 +19,8 @@
 
 pragma solidity ^0.8.15;
 
-import {DomainHost,DomainGuestLike,TeleportGUID} from "../../DomainHost.sol";
+import {DomainGuestLike,TeleportGUID} from "../../DomainHost.sol";
+import {OptimisticDomainHost} from "../../OptimisticDomainHost.sol";
 
 interface InboxLike {
     function createRetryableTicket(
@@ -43,7 +44,7 @@ interface OutboxLike {
     function l2ToL1Sender() external view returns (address);
 }
 
-contract ArbitrumDomainHost is DomainHost {
+contract ArbitrumDomainHost is OptimisticDomainHost {
 
     // --- Data ---
     InboxLike public immutable inbox;
@@ -67,7 +68,7 @@ contract ArbitrumDomainHost is DomainHost {
         address _router,
         address _inbox,
         address _guest
-    ) DomainHost(_ilk, _daiJoin, _escrow, _router) {
+    ) OptimisticDomainHost(_ilk, _daiJoin, _escrow, _router) {
         inbox = InboxLike(_inbox);
         guest = _guest;
     }

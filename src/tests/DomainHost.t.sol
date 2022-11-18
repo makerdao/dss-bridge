@@ -10,14 +10,15 @@ import { EscrowMock } from "./mocks/EscrowMock.sol";
 import { RouterMock } from "./mocks/RouterMock.sol";
 import { VatMock } from "./mocks/VatMock.sol";
 import { DomainHost, DomainGuestLike, TeleportGUID, getGUIDHash, Settlement } from "../DomainHost.sol";
+import { OptimisticDomainHost } from "../OptimisticDomainHost.sol";
 import "../TeleportGUID.sol";
 
-contract EmptyDomainHost is DomainHost {
+contract EmptyDomainHost is OptimisticDomainHost {
 
     bool forceIsGuest = true;
     bytes public lastPayload;
 
-    constructor(bytes32 _ilk, address _daiJoin, address _escrow, address _router) DomainHost(_ilk, _daiJoin, _escrow, _router) {}
+    constructor(bytes32 _ilk, address _daiJoin, address _escrow, address _router) OptimisticDomainHost(_ilk, _daiJoin, _escrow, _router) {}
 
     function setIsGuest(bool v) external {
         forceIsGuest = v;
@@ -154,12 +155,12 @@ contract DomainHostTest is DSSTest {
         host.setIsGuest(false);
 
         bytes[] memory funcs = new bytes[](6);
-        funcs[0] = abi.encodeWithSelector(DomainHost.release.selector, 0, 0, 0);
-        funcs[1] = abi.encodeWithSelector(DomainHost.push.selector, 0, 0, 0);
-        funcs[2] = abi.encodeWithSelector(DomainHost.tell.selector, 0, 0, 0);
-        funcs[3] = abi.encodeWithSelector(DomainHost.withdraw.selector, 0, 0, 0);
-        funcs[4] = abi.encodeWithSelector(DomainHost.finalizeRegisterMint.selector, 0, 0, 0, 0, 0, 0, 0);
-        funcs[5] = abi.encodeWithSelector(DomainHost.finalizeSettle.selector, 0, 0, 0);
+        funcs[0] = abi.encodeWithSelector(OptimisticDomainHost.release.selector, 0, 0, 0);
+        funcs[1] = abi.encodeWithSelector(OptimisticDomainHost.push.selector, 0, 0, 0);
+        funcs[2] = abi.encodeWithSelector(OptimisticDomainHost.tell.selector, 0, 0, 0);
+        funcs[3] = abi.encodeWithSelector(OptimisticDomainHost.withdraw.selector, 0, 0, 0);
+        funcs[4] = abi.encodeWithSelector(OptimisticDomainHost.finalizeRegisterMint.selector, 0, 0, 0, 0, 0, 0, 0);
+        funcs[5] = abi.encodeWithSelector(OptimisticDomainHost.finalizeSettle.selector, 0, 0, 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
             assertRevert(address(host), funcs[i], "DomainHost/not-guest");
@@ -171,7 +172,7 @@ contract DomainHostTest is DSSTest {
 
         bytes[] memory funcs = new bytes[](3);
         funcs[0] = abi.encodeWithSelector(EmptyDomainHost.lift.selector, 0, 0, 0);
-        funcs[1] = abi.encodeWithSelector(DomainHost.release.selector, 0, 0, 0);
+        funcs[1] = abi.encodeWithSelector(OptimisticDomainHost.release.selector, 0, 0, 0);
         funcs[2] = abi.encodeWithSelector(EmptyDomainHost.rectify.selector, 0, 0, 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
@@ -181,9 +182,9 @@ contract DomainHostTest is DSSTest {
 
     function testOrdered() public {
         bytes[] memory funcs = new bytes[](3);
-        funcs[0] = abi.encodeWithSelector(DomainHost.release.selector, 1, 0, 0);
-        funcs[1] = abi.encodeWithSelector(DomainHost.push.selector, 1, 0, 0);
-        funcs[2] = abi.encodeWithSelector(DomainHost.tell.selector, 1, 0, 0);
+        funcs[0] = abi.encodeWithSelector(OptimisticDomainHost.release.selector, 1, 0, 0);
+        funcs[1] = abi.encodeWithSelector(OptimisticDomainHost.push.selector, 1, 0, 0);
+        funcs[2] = abi.encodeWithSelector(OptimisticDomainHost.tell.selector, 1, 0, 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
             assertRevert(address(host), funcs[i], "DomainHost/out-of-order");
@@ -279,7 +280,7 @@ contract DomainHostTest is DSSTest {
         (uint256 ink, uint256 art) = vat.urns(ILK, address(host));
         assertEq(ink, 100 ether);
         assertEq(art, 100 ether);
-        
+
         // Repay some dust
         vat.frob(ILK, address(host), address(this), address(this), 0, -int256(1 ether));
 
