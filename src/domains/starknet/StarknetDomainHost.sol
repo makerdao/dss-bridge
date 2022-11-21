@@ -96,7 +96,7 @@ contract StarknetDomainHost is DomainHost {
 
     // TODO: not compatible with starkgate!
 
-    function depositPayload(uint256 to, uint256 amount, address sender) private returns (uint256[] memory) {
+    function depositPayload(uint256 to, uint256 amount, address sender) private pure returns (uint256[] memory) {
         uint256[] memory payload = new uint256[](4);
         payload[0] = to;
         (payload[1], payload[2]) = split(amount);
@@ -207,13 +207,13 @@ contract StarknetDomainHost is DomainHost {
         (TeleportGUID calldata _teleport) = _initializeRegisterMint(teleport);
 
         uint256[] memory payload = new uint256[](10);
-        (payload[0], payload[1]) = split(uint256(teleport.sourceDomain));
-        (payload[2], payload[3]) = split(uint256(teleport.targetDomain));
-        payload[4] = uint256(teleport.receiver);
-        payload[5] = uint256(teleport.operator);
-        payload[6] = uint256(teleport.amount);
-        payload[7] = uint256(teleport.nonce);
-        payload[8] = uint256(teleport.timestamp);
+        (payload[0], payload[1]) = split(uint256(_teleport.sourceDomain));
+        (payload[2], payload[3]) = split(uint256(_teleport.targetDomain));
+        payload[4] = uint256(_teleport.receiver);
+        payload[5] = uint256(_teleport.operator);
+        payload[6] = uint256(_teleport.amount);
+        payload[7] = uint256(_teleport.nonce);
+        payload[8] = uint256(_teleport.timestamp);
 
         starkNet.sendMessageToL2{value: msg.value}(guest, INITIALIZE_REGISTER_MINT, payload);
     }
