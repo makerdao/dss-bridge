@@ -123,12 +123,6 @@ abstract contract DomainGuest {
         _;
     }
 
-    function _isHost(address usr) internal virtual view returns (bool);
-    modifier hostOnly {
-        require(_isHost(msg.sender), "DomainGuest/not-host");
-        _;
-    }
-
     modifier ordered(uint256 _lid) {
         require(lid++ == _lid, "DomainGuest/out-of-order");
         _;
@@ -195,7 +189,7 @@ abstract contract DomainGuest {
     /// @notice Mint DAI and send to user
     /// @param to The address to send the DAI to on the local domain
     /// @param amount The amount of DAI to send [WAD]
-    function deposit(address to, uint256 amount) external hostOnly {
+    function _deposit(address to, uint256 amount) internal {
         vat.swell(address(this), _int256(amount * RAY));
         daiJoin.exit(to, amount);
 
@@ -218,7 +212,7 @@ abstract contract DomainGuest {
     /// @notice Record changes in line and grain and update dss global debt ceiling if necessary
     /// @param _lid Local ordering id
     /// @param wad The new debt ceiling [WAD]
-    function lift(uint256 _lid, uint256 wad) external hostOnly ordered(_lid) {
+    function _lift(uint256 _lid, uint256 wad) internal ordered(_lid) {
         require(live == 1, "DomainGuest/not-live");
 
         uint256 lastLine = vat.Line();
@@ -281,7 +275,7 @@ abstract contract DomainGuest {
     /// @notice Merge DAI into surplus
     /// @param _lid Local ordering id
     /// @param wad The amount of DAI that has been sent to this domain [WAD]
-    function rectify(uint256 _lid, uint256 wad) external hostOnly ordered(_lid) {
+    function _rectify(uint256 _lid, uint256 wad) internal ordered(_lid) {
         vat.swell(address(this), _int256(wad * RAY));
 
         emit Rectify(wad);
@@ -289,7 +283,7 @@ abstract contract DomainGuest {
 
     /// @notice Trigger the end module
     /// @param _lid Local ordering id
-    function cage(uint256 _lid) external hostOnly ordered(_lid) {
+    function _cage(uint256 _lid) internal ordered(_lid) {
         require(live == 1, "DomainGuest/not-live");
 
         live = 0;
@@ -316,7 +310,7 @@ abstract contract DomainGuest {
     /// @dev    This will transfer a scaled claim from the end.
     /// @param usr The destination to send the claim tokens to
     /// @param wad The amount of claim tokens to mint
-    function exit(address usr, uint256 wad) external hostOnly {
+    function _exit(address usr, uint256 wad) internal {
         // Convert to actual debt amount
         // Round against the user
         uint256 claimAmount = wad * (end.debt() / grain);
@@ -345,7 +339,7 @@ abstract contract DomainGuest {
 
         emit InitializeRegisterMint(teleport);
     }
-    function finalizeRegisterMint(TeleportGUID calldata teleport) external hostOnly {
+    function _finalizeRegisterMint(TeleportGUID calldata teleport) internal {
         router.registerMint(teleport);
 
         emit FinalizeRegisterMint(teleport);
@@ -375,7 +369,7 @@ abstract contract DomainGuest {
 
         emit InitializeSettle(index, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
     }
-    function finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external hostOnly {
+    function _finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) internal {
         vat.swell(address(this), _int256(amount * RAY));
         daiJoin.exit(address(this), amount);
         router.settle(sourceDomain, targetDomain, amount);

@@ -66,8 +66,13 @@ contract OptimismDomainGuest is DomainGuest {
         emit FileGL(what, data);
     }
 
-    function _isHost(address usr) internal override view returns (bool) {
-        return usr == address(l2messenger) && l2messenger.xDomainMessageSender() == host;
+    modifier hostOnly {
+        require(msg.sender == address(l2messenger) && l2messenger.xDomainMessageSender() == host, "DomainGuest/not-host");
+        _;
+    }
+
+    function deposit(address to, uint256 amount) external hostOnly {
+        _deposit(to, amount);
     }
 
     function withdraw(address to, uint256 amount) external {
@@ -80,6 +85,10 @@ contract OptimismDomainGuest is DomainGuest {
             abi.encodeWithSelector(DomainHostLike.withdraw.selector, to, amount),
             gasLimit
         );
+    }
+
+    function lift(uint256 _lid, uint256 wad) external hostOnly {
+        _lift(_lid, wad);
     }
 
     function release() external {
@@ -106,6 +115,14 @@ contract OptimismDomainGuest is DomainGuest {
         );
     }
 
+    function rectify(uint256 _lid, uint256 wad) external hostOnly {
+        _rectify(_lid, wad);
+    }
+
+    function cage(uint256 _lid) external hostOnly {
+        _cage(_lid);
+    }
+
     function tell() external {
         tell(glTell);
     }
@@ -116,6 +133,10 @@ contract OptimismDomainGuest is DomainGuest {
             abi.encodeWithSelector(DomainHostLike.tell.selector, _rid, _cure),
             gasLimit
         );
+    }
+
+    function exit(address usr, uint256 wad) external hostOnly {
+        _exit(usr, wad);
     }
 
     function initializeRegisterMint(TeleportGUID calldata teleport) external {
@@ -130,6 +151,10 @@ contract OptimismDomainGuest is DomainGuest {
         );
     }
 
+    function finalizeRegisterMint(TeleportGUID calldata teleport) external hostOnly {
+        _finalizeRegisterMint(teleport);
+    }
+
     function initializeSettle(uint256 index) external {
         initializeSettle(index, glInitializeSettle);
     }
@@ -140,6 +165,10 @@ contract OptimismDomainGuest is DomainGuest {
             abi.encodeWithSelector(DomainHostLike.finalizeSettle.selector, _sourceDomain, _targetDomain, _amount),
             gasLimit
         );
+    }
+
+    function finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external hostOnly {
+        _finalizeSettle(sourceDomain, targetDomain, amount);
     }
 
 }

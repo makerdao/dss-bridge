@@ -19,11 +19,12 @@ contract EmptyDomainHost is DomainHost {
 
     constructor(bytes32 _ilk, address _daiJoin, address _escrow, address _router) DomainHost(_ilk, _daiJoin, _escrow, _router) {}
 
+    modifier guestOnly {
+        require(forceIsGuest, "DomainHost/not-guest");
+        _;
+    }
     function setIsGuest(bool v) external {
         forceIsGuest = v;
-    }
-    function _isGuest(address) internal override view returns (bool) {
-        return forceIsGuest;
     }
 
     function deposit(address to, uint256 amount) external {
@@ -40,9 +41,18 @@ contract EmptyDomainHost is DomainHost {
     function undoDeposit(address sender, bytes32 to, uint256 amount) external {
         _undoDeposit(sender, to, amount);
     }
+    function withdraw(address to, uint256 amount) external guestOnly {
+        _withdraw(to, amount);
+    }
     function lift(uint256 wad) external {
         uint256 _rid = _lift(wad);
         lastPayload = abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, wad);
+    }
+    function release(uint256 _lid, uint256 wad) external guestOnly {
+        _release(_lid, wad);
+    }
+    function push(uint256 _lid, int256 wad) external guestOnly {
+        _push(_lid, wad);
     }
     function rectify() external {
         (uint256 _rid, uint256 _wad) = _rectify();
@@ -51,6 +61,9 @@ contract EmptyDomainHost is DomainHost {
     function cage() external {
         (uint256 _rid) = _cage();
         lastPayload = abi.encodeWithSelector(DomainGuestLike.cage.selector, _rid);
+    }
+    function tell(uint256 _lid, uint256 value) external guestOnly {
+        _tell(_lid, value);
     }
     function exit(address usr, uint256 wad) external {
         _exit(usr, wad);
@@ -70,12 +83,18 @@ contract EmptyDomainHost is DomainHost {
         _initializeRegisterMint(teleport);
         lastPayload = abi.encodeWithSelector(DomainGuestLike.finalizeRegisterMint.selector, teleport);
     }
+    function finalizeRegisterMint(TeleportGUID calldata teleport) external guestOnly {
+        _finalizeRegisterMint(teleport);
+    }
     function initializeSettle(uint256 index) external {
         (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) = _initializeSettle(index);
         lastPayload = abi.encodeWithSelector(DomainGuestLike.finalizeSettle.selector, _sourceDomain, _targetDomain, _amount);
     }
     function undoInitializeSettle(uint256 index) external {
         _undoInitializeSettle(index);
+    }
+    function finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external guestOnly {
+        _finalizeSettle(sourceDomain, targetDomain, amount);
     }
 
 }
@@ -172,12 +191,12 @@ contract DomainHostTest is DSSTest {
         host.setIsGuest(false);
 
         bytes[] memory funcs = new bytes[](6);
-        funcs[0] = abi.encodeWithSelector(DomainHost.release.selector, 0, 0, 0);
-        funcs[1] = abi.encodeWithSelector(DomainHost.push.selector, 0, 0, 0);
-        funcs[2] = abi.encodeWithSelector(DomainHost.tell.selector, 0, 0, 0);
-        funcs[3] = abi.encodeWithSelector(DomainHost.withdraw.selector, 0, 0, 0);
-        funcs[4] = abi.encodeWithSelector(DomainHost.finalizeRegisterMint.selector, 0, 0, 0, 0, 0, 0, 0);
-        funcs[5] = abi.encodeWithSelector(DomainHost.finalizeSettle.selector, 0, 0, 0);
+        funcs[0] = abi.encodeWithSelector(EmptyDomainHost.release.selector, 0, 0, 0);
+        funcs[1] = abi.encodeWithSelector(EmptyDomainHost.push.selector, 0, 0, 0);
+        funcs[2] = abi.encodeWithSelector(EmptyDomainHost.tell.selector, 0, 0, 0);
+        funcs[3] = abi.encodeWithSelector(EmptyDomainHost.withdraw.selector, 0, 0, 0);
+        funcs[4] = abi.encodeWithSelector(EmptyDomainHost.finalizeRegisterMint.selector, 0, 0, 0, 0, 0, 0, 0);
+        funcs[5] = abi.encodeWithSelector(EmptyDomainHost.finalizeSettle.selector, 0, 0, 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
             assertRevert(address(host), funcs[i], "DomainHost/not-guest");
@@ -189,7 +208,7 @@ contract DomainHostTest is DSSTest {
 
         bytes[] memory funcs = new bytes[](3);
         funcs[0] = abi.encodeWithSelector(EmptyDomainHost.lift.selector, 0, 0, 0);
-        funcs[1] = abi.encodeWithSelector(DomainHost.release.selector, 0, 0, 0);
+        funcs[1] = abi.encodeWithSelector(EmptyDomainHost.release.selector, 0, 0, 0);
         funcs[2] = abi.encodeWithSelector(EmptyDomainHost.rectify.selector, 0, 0, 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
@@ -199,9 +218,9 @@ contract DomainHostTest is DSSTest {
 
     function testOrdered() public {
         bytes[] memory funcs = new bytes[](3);
-        funcs[0] = abi.encodeWithSelector(DomainHost.release.selector, 1, 0, 0);
-        funcs[1] = abi.encodeWithSelector(DomainHost.push.selector, 1, 0, 0);
-        funcs[2] = abi.encodeWithSelector(DomainHost.tell.selector, 1, 0, 0);
+        funcs[0] = abi.encodeWithSelector(EmptyDomainHost.release.selector, 1, 0, 0);
+        funcs[1] = abi.encodeWithSelector(EmptyDomainHost.push.selector, 1, 0, 0);
+        funcs[2] = abi.encodeWithSelector(EmptyDomainHost.tell.selector, 1, 0, 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
             assertRevert(address(host), funcs[i], "DomainHost/out-of-order");
