@@ -128,12 +128,6 @@ abstract contract DomainHost {
         _;
     }
 
-    function _isGuest(address usr) internal virtual view returns (bool);
-    modifier guestOnly {
-        require(_isGuest(msg.sender), "DomainHost/not-guest");
-        _;
-    }
-
     modifier ordered(uint256 _lid) {
         require(lid++ == _lid, "DomainHost/out-of-order");
         _;
@@ -237,7 +231,7 @@ abstract contract DomainHost {
     /// @notice Withdraw local DAI by burning remote canonical DAI
     /// @param to The address to send the DAI to on the local domain
     /// @param amount The amount of DAI to withdraw [WAD]
-    function withdraw(address to, uint256 amount) external guestOnly {
+    function _withdraw(address to, uint256 amount) internal {
         require(dai.transferFrom(escrow, to, amount), "DomainHost/transfer-failed");
 
         emit Withdraw(to, amount);
@@ -276,7 +270,7 @@ abstract contract DomainHost {
     /// @notice Withdraw pre-mint DAI from the remote domain
     /// @param _lid Local ordering id
     /// @param wad The amount of DAI to release [WAD]
-    function release(uint256 _lid, uint256 wad) external guestOnly ordered(_lid) {
+    function _release(uint256 _lid, uint256 wad) internal ordered(_lid) {
         require(vat.live() == 1, "DomainHost/vat-not-live");
 
         // Fix any permissionless repays that may have occurred
@@ -302,7 +296,7 @@ abstract contract DomainHost {
     /// @notice Guest is pushing a surplus (or deficit)
     /// @param _lid Local ordering id
     /// @param wad The amount of DAI to push (or pull) [WAD]
-    function push(uint256 _lid, int256 wad) external guestOnly ordered(_lid) {
+    function _push(uint256 _lid, int256 wad) internal ordered(_lid) {
         if (wad >= 0) {
             dai.transferFrom(address(escrow), address(this), uint256(wad));
             daiJoin.join(address(vow), uint256(wad));
@@ -347,7 +341,7 @@ abstract contract DomainHost {
     /// @notice Set this domain's cure value
     /// @param _lid Local ordering id
     /// @param value The value of the cure [RAD]
-    function tell(uint256 _lid, uint256 value) external guestOnly ordered(_lid) {
+    function _tell(uint256 _lid, uint256 value) internal ordered(_lid) {
         require(live == 0, "DomainHost/live");
         require(!cureReported, "DomainHost/cure-reported");
         require(_divup(value, RAY) <= grain, "DomainHost/cure-bad-value");
@@ -422,7 +416,7 @@ abstract contract DomainHost {
 
         emit InitializeRegisterMint(teleport);
     }
-    function finalizeRegisterMint(TeleportGUID calldata teleport) external guestOnly {
+    function _finalizeRegisterMint(TeleportGUID calldata teleport) internal {
         router.registerMint(teleport);
 
         emit FinalizeRegisterMint(teleport);
@@ -459,7 +453,7 @@ abstract contract DomainHost {
 
         emit UndoInitializeSettle(index, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
     }
-    function finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external guestOnly {
+    function _finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) internal {
         require(dai.transferFrom(escrow, address(this), amount), "DomainHost/transfer-failed");
         router.settle(sourceDomain, targetDomain, amount);
 
