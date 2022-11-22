@@ -74,10 +74,10 @@ contract OptimismDomainGuest is DomainGuest {
         withdraw(to, amount, glWithdraw);
     }
     function withdraw(address to, uint256 amount, uint32 gasLimit) public {
-        (address _to, uint256 _amount) = _withdraw(to, amount);
+        _withdraw(to, amount);
         l2messenger.sendMessage(
             host,
-            abi.encodeWithSelector(DomainHostLike.withdraw.selector, _to, _amount),
+            abi.encodeWithSelector(DomainHostLike.withdraw.selector, to, amount),
             gasLimit
         );
     }
@@ -122,10 +122,10 @@ contract OptimismDomainGuest is DomainGuest {
         initializeRegisterMint(teleport, glInitializeRegisterMint);
     }
     function initializeRegisterMint(TeleportGUID calldata teleport, uint32 gasLimit) public {
-        (TeleportGUID calldata _teleport) = _initializeRegisterMint(teleport);
+        _initializeRegisterMint(teleport);
         l2messenger.sendMessage(
             host,
-            abi.encodeWithSelector(DomainHostLike.finalizeRegisterMint.selector, _teleport),
+            abi.encodeWithSelector(DomainHostLike.finalizeRegisterMint.selector, teleport),
             gasLimit
         );
     }

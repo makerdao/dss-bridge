@@ -185,11 +185,8 @@ abstract contract DomainHost {
     /// @notice Deposit local DAI to mint remote canonical DAI
     /// @param to The address to send the DAI to on the remote domain
     /// @param amount The amount of DAI to deposit [WAD]
-    function _deposit(address to, uint256 amount) internal returns (address _to, uint256 _amount) {
+    function _deposit(address to, uint256 amount) internal {
         require(dai.transferFrom(msg.sender, escrow, amount), "DomainHost/transfer-failed");
-
-        _to = to;
-        _amount = amount;
 
         emit Deposit(msg.sender, to, amount);
     }
@@ -224,7 +221,7 @@ abstract contract DomainHost {
     /// @dev Please note that pre-mint DAI cannot be removed from the remote domain
     /// until the remote domain signals that it is safe to do so
     /// @param wad The new debt ceiling [WAD]
-    function _lift(uint256 wad) internal auth returns (uint256 _rid, uint256 _wad) {
+    function _lift(uint256 wad) internal auth returns (uint256 _rid) {
         require(vat.live() == 1, "DomainHost/vat-not-live");
 
         uint256 rad = wad * RAY;
@@ -244,7 +241,6 @@ abstract contract DomainHost {
         line = rad;
 
         _rid = rid++;
-        _wad = wad;
 
         emit Lift(wad);
     }
@@ -337,12 +333,9 @@ abstract contract DomainHost {
     /// @notice Allow DAI holders to exit during global settlement
     /// @param usr The address to send the claim token to
     /// @param wad The amount of gems to exit [WAD]
-    function _exit(address usr, uint256 wad) internal returns (address _usr, uint256 _wad) {
+    function _exit(address usr, uint256 wad) internal {
         require(vat.live() == 0, "DomainHost/vat-live");
         vat.slip(ilk, msg.sender, -_int256(wad));
-        
-        _usr = usr;
-        _wad = wad;
 
         emit Exit(msg.sender, usr, wad);
     }
@@ -370,11 +363,9 @@ abstract contract DomainHost {
 
         emit RegisterMint(teleport);
     }
-    function _initializeRegisterMint(TeleportGUID calldata teleport) internal returns (TeleportGUID calldata _teleport) {
+    function _initializeRegisterMint(TeleportGUID calldata teleport) internal {
         // There is no issue with resending these messages as the end TeleportJoin will enforce only-once execution
         require(teleports[getGUIDHash(teleport)], "DomainHost/teleport-not-registered");
-
-        _teleport = teleport;
 
         emit InitializeRegisterMint(teleport);
     }

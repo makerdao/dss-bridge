@@ -27,15 +27,15 @@ contract EmptyDomainHost is DomainHost {
     }
 
     function deposit(address to, uint256 amount) external {
-        (address _to, uint256 _amount) = _deposit(to, amount);
-        lastPayload = abi.encodeWithSelector(DomainGuestLike.deposit.selector, _to, _amount);
+        _deposit(to, amount);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.deposit.selector, to, amount);
     }
     function undoDeposit(address sender, address to, uint256 amount) external {
         _undoDeposit(sender, to, amount);
     }
     function lift(uint256 wad) external {
-        (uint256 _rid, uint256 _wad) = _lift(wad);
-        lastPayload = abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, _wad);
+        uint256 _rid = _lift(wad);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, wad);
     }
     function rectify() external {
         (uint256 _rid, uint256 _wad) = _rectify();
@@ -46,15 +46,15 @@ contract EmptyDomainHost is DomainHost {
         lastPayload = abi.encodeWithSelector(DomainGuestLike.cage.selector, _rid);
     }
     function exit(address usr, uint256 wad) external {
-        (address _usr, uint256 _wad) = _exit(usr, wad);
-        lastPayload = abi.encodeWithSelector(DomainGuestLike.exit.selector, _usr, _wad);
+        _exit(usr, wad);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, wad);
     }
     function undoExit(address sender, address usr, uint256 wad) external {
         _undoExit(sender, usr, wad);
     }
     function initializeRegisterMint(TeleportGUID calldata teleport) external {
-        (TeleportGUID calldata _teleport) = _initializeRegisterMint(teleport);
-        lastPayload = abi.encodeWithSelector(DomainGuestLike.finalizeRegisterMint.selector, _teleport);
+        _initializeRegisterMint(teleport);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.finalizeRegisterMint.selector, teleport);
     }
     function initializeSettle(uint256 index) external {
         (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) = _initializeSettle(index);

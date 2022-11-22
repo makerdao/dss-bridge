@@ -75,10 +75,10 @@ contract OptimismDomainHost is DomainHost {
         deposit(to, amount, glDeposit);
     }
     function deposit(address to, uint256 amount, uint32 gasLimit) public {
-        (address _to, uint256 _amount) = _deposit(to, amount);
+        _deposit(to, amount);
         l1messenger.sendMessage(
             guest,
-            abi.encodeWithSelector(DomainGuestLike.deposit.selector, _to, _amount),
+            abi.encodeWithSelector(DomainGuestLike.deposit.selector, to, amount),
             gasLimit
         );
     }
@@ -87,10 +87,10 @@ contract OptimismDomainHost is DomainHost {
         lift(wad, glLift);
     }
     function lift(uint256 wad, uint32 gasLimit) public {
-        (uint256 _rid, uint256 _wad) = _lift(wad);
+        uint256 _rid = _lift(wad);
         l1messenger.sendMessage(
             guest,
-            abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, _wad),
+            abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, wad),
             gasLimit
         );
     }
@@ -123,10 +123,10 @@ contract OptimismDomainHost is DomainHost {
         exit(usr, wad, glExit);
     }
     function exit(address usr, uint256 wad, uint32 gasLimit) public {
-        (address _usr, uint256 _wad) = _exit(usr, wad);
+        _exit(usr, wad);
         l1messenger.sendMessage(
             guest,
-            abi.encodeWithSelector(DomainGuestLike.exit.selector, _usr, _wad),
+            abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, wad),
             gasLimit
         );
     }
@@ -135,10 +135,10 @@ contract OptimismDomainHost is DomainHost {
         initializeRegisterMint(teleport, glInitializeRegisterMint);
     }
     function initializeRegisterMint(TeleportGUID calldata teleport, uint32 gasLimit) public {
-        (TeleportGUID calldata _teleport) = _initializeRegisterMint(teleport);
+        _initializeRegisterMint(teleport);
         l1messenger.sendMessage(
             guest,
-            abi.encodeWithSelector(DomainGuestLike.finalizeRegisterMint.selector, _teleport),
+            abi.encodeWithSelector(DomainGuestLike.finalizeRegisterMint.selector, teleport),
             gasLimit
         );
     }

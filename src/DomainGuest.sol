@@ -205,13 +205,10 @@ abstract contract DomainGuest {
     /// @notice Withdraw DAI by burning local canonical DAI
     /// @param to The address to send the DAI to on the remote domain
     /// @param amount The amount of DAI to withdraw [WAD]
-    function _withdraw(address to, uint256 amount) internal returns (address _to, uint256 _amount) {
+    function _withdraw(address to, uint256 amount) internal {
         require(dai.transferFrom(msg.sender, address(this), amount), "DomainGuest/transfer-failed");
         daiJoin.join(address(this), amount);
         vat.swell(address(this), -_int256(amount * RAY));
-
-        _to = to;
-        _amount = amount;
 
         emit Withdraw(msg.sender, to, amount);
     }
@@ -342,11 +339,9 @@ abstract contract DomainGuest {
 
         emit RegisterMint(teleport);
     }
-    function _initializeRegisterMint(TeleportGUID calldata teleport) internal returns (TeleportGUID calldata _teleport) {
+    function _initializeRegisterMint(TeleportGUID calldata teleport) internal {
         // There is no issue with resending these messages as the end TeleportJoin will enforce only-once execution
         require(teleports[getGUIDHash(teleport)], "DomainGuest/teleport-not-registered");
-
-        _teleport = teleport;
 
         emit InitializeRegisterMint(teleport);
     }

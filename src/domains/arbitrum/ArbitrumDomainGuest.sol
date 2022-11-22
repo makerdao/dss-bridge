@@ -51,10 +51,10 @@ contract ArbitrumDomainGuest is DomainGuest {
     }
 
     function withdraw(address to, uint256 amount) external {
-        (address _to, uint256 _amount) = _withdraw(to, amount);
+        _withdraw(to, amount);
         arbSys.sendTxToL1(
             host,
-            abi.encodeWithSelector(DomainHostLike.withdraw.selector, _to, _amount)
+            abi.encodeWithSelector(DomainHostLike.withdraw.selector, to, amount)
         );
     }
 
@@ -83,10 +83,10 @@ contract ArbitrumDomainGuest is DomainGuest {
     }
 
     function initializeRegisterMint(TeleportGUID calldata teleport) external {
-        (TeleportGUID calldata _teleport) = _initializeRegisterMint(teleport);
+        _initializeRegisterMint(teleport);
         arbSys.sendTxToL1(
             host,
-            abi.encodeWithSelector(DomainHostLike.finalizeRegisterMint.selector, _teleport)
+            abi.encodeWithSelector(DomainHostLike.finalizeRegisterMint.selector, teleport)
         );
     }
 
