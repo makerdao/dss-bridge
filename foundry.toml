@@ -11,5 +11,6 @@ fs_permissions = [
     { access = "read", path = "./script/input/"},
     { access = "read", path = "./out/ArbitrumDomain.sol/ArbSysOverride.json"}
 ]
+remappings=['xdomain-dss/=lib/xdomain-dss/src', 'dss-teleport/=lib/dss-teleport/src']
 
 # See more config options https://github.com/gakonst/foundry/tree/master/config
