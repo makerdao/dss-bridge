@@ -30,7 +30,14 @@ contract EmptyDomainHost is DomainHost {
         _deposit(to, amount);
         lastPayload = abi.encodeWithSelector(DomainGuestLike.deposit.selector, to, amount);
     }
+    function deposit(bytes32 to, uint256 amount) external {
+        _deposit(to, amount);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.deposit.selector, to, amount);
+    }
     function undoDeposit(address sender, address to, uint256 amount) external {
+        _undoDeposit(sender, to, amount);
+    }
+    function undoDeposit(address sender, bytes32 to, uint256 amount) external {
         _undoDeposit(sender, to, amount);
     }
     function lift(uint256 wad) external {
@@ -49,7 +56,14 @@ contract EmptyDomainHost is DomainHost {
         _exit(usr, wad);
         lastPayload = abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, wad);
     }
+    function exit(bytes32 usr, uint256 wad) external {
+        _exit(usr, wad);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, wad);
+    }
     function undoExit(address sender, address usr, uint256 wad) external {
+        _undoExit(sender, usr, wad);
+    }
+    function undoExit(address sender, bytes32 usr, uint256 wad) external {
         _undoExit(sender, usr, wad);
     }
     function initializeRegisterMint(TeleportGUID calldata teleport) external {
@@ -88,9 +102,13 @@ contract DomainHostTest is DSSTest {
     event Cage();
     event Tell(uint256 value);
     event Exit(address indexed sender, address indexed usr, uint256 wad);
+    event Exit(address indexed sender, bytes32 indexed usr, uint256 wad);
     event UndoExit(address indexed sender, address indexed usr, uint256 wad);
+    event UndoExit(address indexed sender, bytes32 indexed usr, uint256 wad);
     event Deposit(address indexed sender, address indexed to, uint256 amount);
+    event Deposit(address indexed sender, bytes32 indexed to, uint256 amount);
     event UndoDeposit(address indexed sender, address indexed to, uint256 amount);
+    event UndoDeposit(address indexed sender, bytes32 indexed to, uint256 amount);
     event Withdraw(address indexed to, uint256 amount);
     event RegisterMint(TeleportGUID teleport);
     event InitializeRegisterMint(TeleportGUID teleport);
@@ -479,6 +497,23 @@ contract DomainHostTest is DSSTest {
         assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.exit.selector, address(123), 50 ether));
     }
 
+    function testExitBytes32() public {
+        // Setup initial conditions
+        host.lift(100 ether);       // DC raised to 100
+        vat.cage();
+        host.cage();
+        host.tell(0, 70 * RAD);        // Guest later reports on 30 debt is actually used
+
+        // Simulate user getting some gems for this ilk (normally handled by end)
+        vat.slip(ILK, address(this), 50 ether);
+
+        vm.expectEmit(true, true, true, true);
+        emit Exit(address(this), bytes32(uint256(123)), 50 ether);
+        host.exit(bytes32(uint256(123)), 50 ether);
+
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.exit.selector, address(123), 50 ether));
+    }
+
     function testUndoExit() public {
         // Setup initial conditions
         host.lift(100 ether);       // DC raised to 100
@@ -502,6 +537,29 @@ contract DomainHostTest is DSSTest {
         assertEq(vat.gem(ILK, address(this)), 50 ether);
     }
 
+    function testUndoExitBytes32() public {
+        // Setup initial conditions
+        host.lift(100 ether);       // DC raised to 100
+        vat.cage();
+        host.cage();
+        host.tell(0, 70 * RAD);        // Guest later reports on 30 debt is actually used
+
+        // Simulate user getting some gems for this ilk (normally handled by end)
+        vat.slip(ILK, address(this), 50 ether);
+
+        // User attempts to exit
+        host.exit(bytes32(uint256(123)), 50 ether);
+
+        assertEq(vat.gem(ILK, address(this)), 0);
+
+        // ... but they were censored and user wants the funds back
+        vm.expectEmit(true, true, true, true);
+        emit UndoExit(address(this), bytes32(uint256(123)), 50 ether);
+        host.undoExit(address(this), bytes32(uint256(123)), 50 ether);
+
+        assertEq(vat.gem(ILK, address(this)), 50 ether);
+    }
+
     function testDeposit() public {
         vat.suck(address(123), address(this), 100 * RAD);
         daiJoin.exit(address(this), 100 ether);
@@ -513,6 +571,23 @@ contract DomainHostTest is DSSTest {
         vm.expectEmit(true, true, true, true);
         emit Deposit(address(this), address(123), 100 ether);
         host.deposit(address(123), 100 ether);
+
+        assertEq(dai.balanceOf(address(this)), 0);
+        assertEq(dai.balanceOf(address(escrow)), 100 ether);
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.deposit.selector, address(123), 100 ether));
+    }
+
+    function testDepositBytes32() public {
+        vat.suck(address(123), address(this), 100 * RAD);
+        daiJoin.exit(address(this), 100 ether);
+        dai.approve(address(host), 100 ether);
+
+        assertEq(dai.balanceOf(address(this)), 100 ether);
+        assertEq(dai.balanceOf(address(escrow)), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Deposit(address(this), bytes32(uint256(123)), 100 ether);
+        host.deposit(bytes32(uint256(123)), 100 ether);
 
         assertEq(dai.balanceOf(address(this)), 0);
         assertEq(dai.balanceOf(address(escrow)), 100 ether);
@@ -534,6 +609,26 @@ contract DomainHostTest is DSSTest {
         vm.expectEmit(true, true, true, true);
         emit UndoDeposit(address(this), address(123), 100 ether);
         host.undoDeposit(address(this), address(123), 100 ether);
+
+        assertEq(dai.balanceOf(address(this)), 100 ether);
+        assertEq(dai.balanceOf(address(escrow)), 0);
+    }
+
+    function testUndoDepositBytes32() public {
+        vat.suck(address(123), address(this), 100 * RAD);
+        daiJoin.exit(address(this), 100 ether);
+        dai.approve(address(host), 100 ether);
+
+        // User attempts to deposit
+        host.deposit(bytes32(uint256(123)), 100 ether);
+
+        assertEq(dai.balanceOf(address(this)), 0);
+        assertEq(dai.balanceOf(address(escrow)), 100 ether);
+
+        // ... but they were censored and user wants the funds back
+        vm.expectEmit(true, true, true, true);
+        emit UndoDeposit(address(this), bytes32(uint256(123)), 100 ether);
+        host.undoDeposit(address(this), bytes32(uint256(123)), 100 ether);
 
         assertEq(dai.balanceOf(address(this)), 100 ether);
         assertEq(dai.balanceOf(address(escrow)), 0);

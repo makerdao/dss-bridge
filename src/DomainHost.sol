@@ -107,9 +107,13 @@ abstract contract DomainHost {
     event Cage();
     event Tell(uint256 value);
     event Exit(address indexed sender, address indexed usr, uint256 wad);
+    event Exit(address indexed sender, bytes32 indexed usr, uint256 wad);
     event UndoExit(address indexed sender, address indexed usr, uint256 wad);
+    event UndoExit(address indexed sender, bytes32 indexed usr, uint256 wad);
     event Deposit(address indexed sender, address indexed to, uint256 amount);
+    event Deposit(address indexed sender, bytes32 indexed to, uint256 amount);
     event UndoDeposit(address indexed sender, address indexed to, uint256 amount);
+    event UndoDeposit(address indexed sender, bytes32 indexed to, uint256 amount);
     event Withdraw(address indexed to, uint256 amount);
     event RegisterMint(TeleportGUID teleport);
     event InitializeRegisterMint(TeleportGUID teleport);
@@ -191,6 +195,15 @@ abstract contract DomainHost {
         emit Deposit(msg.sender, to, amount);
     }
 
+    /// @notice Deposit local DAI to mint remote canonical DAI
+    /// @param to The address to send the DAI to on the remote domain
+    /// @param amount The amount of DAI to deposit [WAD]
+    function _deposit(bytes32 to, uint256 amount) internal {
+        require(dai.transferFrom(msg.sender, escrow, amount), "DomainHost/transfer-failed");
+
+        emit Deposit(msg.sender, to, amount);
+    }
+
     /// @notice Undo a deposit
     /// @dev    Some chains do not guarantee inclusion of a transaction.
     ///         This function allows the user to undo an exit if it is not relayed
@@ -201,6 +214,21 @@ abstract contract DomainHost {
     /// @param to The address the DAI was supposed to be sent to
     /// @param amount The amount of DAI that was attempted to deposit [WAD]
     function _undoDeposit(address sender, address to, uint256 amount) internal {
+        require(dai.transferFrom(escrow, sender, amount), "DomainHost/transfer-failed");
+
+        emit UndoDeposit(sender, to, amount);
+    }
+
+    /// @notice Undo a deposit
+    /// @dev    Some chains do not guarantee inclusion of a transaction.
+    ///         This function allows the user to undo an exit if it is not relayed
+    ///         to the other side.
+    ///         It is up to the implementation to ensure this message was not relayed
+    ///         otherwise you open yourself up to double spends.
+    /// @param sender The msg.sender from the _deposit() call
+    /// @param to The address the DAI was supposed to be sent to
+    /// @param amount The amount of DAI that was attempted to deposit [WAD]
+    function _undoDeposit(address sender, bytes32 to, uint256 amount) internal {
         require(dai.transferFrom(escrow, sender, amount), "DomainHost/transfer-failed");
 
         emit UndoDeposit(sender, to, amount);
@@ -340,6 +368,16 @@ abstract contract DomainHost {
         emit Exit(msg.sender, usr, wad);
     }
 
+    /// @notice Allow DAI holders to exit during global settlement
+    /// @param usr The address to send the claim token to
+    /// @param wad The amount of gems to exit [WAD]
+    function _exit(bytes32 usr, uint256 wad) internal {
+        require(vat.live() == 0, "DomainHost/vat-live");
+        vat.slip(ilk, msg.sender, -_int256(wad));
+
+        emit Exit(msg.sender, usr, wad);
+    }
+
     /// @notice Undo an exit
     /// @dev    Some chains do not guarantee inclusion of a transaction.
     ///         This function allows the user to undo an exit if it is not relayed
@@ -350,6 +388,21 @@ abstract contract DomainHost {
     /// @param usr The address the gems were supposed to be sent to
     /// @param wad The amount of gems that was attempted to exit [WAD]
     function _undoExit(address sender, address usr, uint256 wad) internal {
+        vat.slip(ilk, sender, _int256(wad));
+
+        emit UndoExit(sender, usr, wad);
+    }
+
+    /// @notice Undo an exit
+    /// @dev    Some chains do not guarantee inclusion of a transaction.
+    ///         This function allows the user to undo an exit if it is not relayed
+    ///         to the other side.
+    ///         It is up to the implementation to ensure this message was not relayed
+    ///         otherwise you open yourself up to double spends.
+    /// @param sender The msg.sender from the _exit() call
+    /// @param usr The address the gems were supposed to be sent to
+    /// @param wad The amount of gems that was attempted to exit [WAD]
+    function _undoExit(address sender, bytes32 usr, uint256 wad) internal {
         vat.slip(ilk, sender, _int256(wad));
 
         emit UndoExit(sender, usr, wad);
