@@ -110,7 +110,7 @@ abstract contract DomainGuest {
     event Tell(uint256 value);
     event Exit(address indexed usr, uint256 wad);
     event Deposit(address indexed to, uint256 amount);
-    event Withdraw(address indexed to, uint256 amount);
+    event Withdraw(address indexed sender, address indexed to, uint256 amount);
     event RegisterMint(TeleportGUID teleport);
     event InitializeRegisterMint(TeleportGUID teleport);
     event FinalizeRegisterMint(TeleportGUID teleport);
@@ -213,7 +213,7 @@ abstract contract DomainGuest {
         _to = to;
         _amount = amount;
 
-        emit Withdraw(to, amount);
+        emit Withdraw(msg.sender, to, amount);
     }
 
     // --- MCD Support ---

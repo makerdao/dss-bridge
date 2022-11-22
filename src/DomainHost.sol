@@ -106,10 +106,10 @@ abstract contract DomainHost {
     event Rectify(uint256 wad);
     event Cage();
     event Tell(uint256 value);
-    event Exit(address indexed usr, uint256 wad);
-    event UndoExit(address indexed originalSender, uint256 wad);
-    event Deposit(address indexed to, uint256 amount);
-    event UndoDeposit(address indexed originalSender, uint256 amount);
+    event Exit(address indexed sender, address indexed usr, uint256 wad);
+    event UndoExit(address indexed sender, address indexed usr, uint256 wad);
+    event Deposit(address indexed sender, address indexed to, uint256 amount);
+    event UndoDeposit(address indexed sender, address indexed to, uint256 amount);
     event Withdraw(address indexed to, uint256 amount);
     event RegisterMint(TeleportGUID teleport);
     event InitializeRegisterMint(TeleportGUID teleport);
@@ -191,7 +191,7 @@ abstract contract DomainHost {
         _to = to;
         _amount = amount;
 
-        emit Deposit(to, amount);
+        emit Deposit(msg.sender, to, amount);
     }
 
     /// @notice Undo a deposit
@@ -200,12 +200,13 @@ abstract contract DomainHost {
     ///         to the other side.
     ///         It is up to the implementation to ensure this message was not relayed
     ///         otherwise you open yourself up to double spends.
-    /// @param originalSender The msg.sender from the _deposit() call
+    /// @param sender The msg.sender from the _deposit() call
+    /// @param to The address the DAI was supposed to be sent to
     /// @param amount The amount of DAI that was attempted to deposit [WAD]
-    function _undoDeposit(address originalSender, uint256 amount) internal {
-        require(dai.transferFrom(escrow, originalSender, amount), "DomainHost/transfer-failed");
+    function _undoDeposit(address sender, address to, uint256 amount) internal {
+        require(dai.transferFrom(escrow, sender, amount), "DomainHost/transfer-failed");
 
-        emit UndoDeposit(originalSender, amount);
+        emit UndoDeposit(sender, to, amount);
     }
 
     /// @notice Withdraw local DAI by burning remote canonical DAI
@@ -343,7 +344,7 @@ abstract contract DomainHost {
         _usr = usr;
         _wad = wad;
 
-        emit Exit(usr, wad);
+        emit Exit(msg.sender, usr, wad);
     }
 
     /// @notice Undo an exit
@@ -352,12 +353,13 @@ abstract contract DomainHost {
     ///         to the other side.
     ///         It is up to the implementation to ensure this message was not relayed
     ///         otherwise you open yourself up to double spends.
-    /// @param originalSender The msg.sender from the _exit() call
+    /// @param sender The msg.sender from the _exit() call
+    /// @param usr The address the gems were supposed to be sent to
     /// @param wad The amount of gems that was attempted to exit [WAD]
-    function _undoExit(address originalSender, uint256 wad) internal {
-        vat.slip(ilk, originalSender, _int256(wad));
+    function _undoExit(address sender, address usr, uint256 wad) internal {
+        vat.slip(ilk, sender, _int256(wad));
 
-        emit UndoExit(originalSender, wad);
+        emit UndoExit(sender, usr, wad);
     }
 
     // --- Maker Teleport Support ---

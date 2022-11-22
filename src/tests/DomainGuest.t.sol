@@ -82,7 +82,7 @@ contract DomainGuestTest is DSSTest {
     event Tell(uint256 value);
     event Exit(address indexed usr, uint256 wad);
     event Deposit(address indexed to, uint256 amount);
-    event Withdraw(address indexed to, uint256 amount);
+    event Withdraw(address indexed sender, address indexed to, uint256 amount);
     event RegisterMint(TeleportGUID teleport);
     event InitializeRegisterMint(TeleportGUID teleport);
     event FinalizeRegisterMint(TeleportGUID teleport);
@@ -454,7 +454,7 @@ contract DomainGuestTest is DSSTest {
         assertEq(vat.surf(), 0);
 
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(address(123), 100 ether);
+        emit Withdraw(address(this), address(123), 100 ether);
         guest.withdraw(address(123), 100 ether);
 
         assertEq(dai.balanceOf(address(this)), 0);
