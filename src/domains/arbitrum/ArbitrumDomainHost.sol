@@ -84,9 +84,10 @@ contract ArbitrumDomainHost is DomainHost {
         emit File(what, data);
     }
 
-    function _isGuest(address usr) internal override view returns (bool) {
+    modifier guestOnly {
         address bridge = inbox.bridge();
-        return usr == bridge && guest == OutboxLike(BridgeLike(bridge).activeOutbox()).l2ToL1Sender();
+        require(msg.sender == bridge && guest == OutboxLike(BridgeLike(bridge).activeOutbox()).l2ToL1Sender(), "DomainHost/not-guest");
+        _;
     }
 
     function deposit(
@@ -123,6 +124,10 @@ contract ArbitrumDomainHost is DomainHost {
         );
     }
 
+    function withdraw(address to, uint256 amount) external guestOnly {
+        _withdraw(to, amount);
+    }
+
     function lift(
         uint256 wad,
         uint256 maxSubmissionCost,
@@ -152,6 +157,14 @@ contract ArbitrumDomainHost is DomainHost {
             glLift,
             gasPriceBid
         );
+    }
+
+    function release(uint256 _lid, uint256 wad) external guestOnly {
+        _release(_lid, wad);
+    }
+
+    function push(uint256 _lid, int256 wad) external guestOnly {
+        _push(_lid, wad);
     }
 
     function rectify(
@@ -208,6 +221,10 @@ contract ArbitrumDomainHost is DomainHost {
             glCage,
             gasPriceBid
         );
+    }
+
+    function tell(uint256 _lid, uint256 value) external guestOnly {
+        _tell(_lid, value);
     }
 
     function exit(
@@ -275,6 +292,10 @@ contract ArbitrumDomainHost is DomainHost {
         );
     }
 
+    function finalizeRegisterMint(TeleportGUID calldata teleport) external guestOnly {
+        _finalizeRegisterMint(teleport);
+    }
+
     function initializeSettle(
         uint256 index,
         uint256 maxSubmissionCost,
@@ -304,6 +325,10 @@ contract ArbitrumDomainHost is DomainHost {
             glDeposit,
             gasPriceBid
         );
+    }
+
+    function finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external guestOnly {
+        _finalizeSettle(sourceDomain, targetDomain, amount);
     }
 
 }

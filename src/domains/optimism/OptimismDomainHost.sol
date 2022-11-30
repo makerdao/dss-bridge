@@ -67,8 +67,9 @@ contract OptimismDomainHost is DomainHost {
         emit File(what, data);
     }
 
-    function _isGuest(address usr) internal override view returns (bool) {
-        return usr == address(l1messenger) && l1messenger.xDomainMessageSender() == guest;
+    modifier guestOnly {
+        require(msg.sender == address(l1messenger) && l1messenger.xDomainMessageSender() == guest, "DomainHost/not-guest");
+        _;
     }
 
     function deposit(address to, uint256 amount) external {
@@ -83,6 +84,10 @@ contract OptimismDomainHost is DomainHost {
         );
     }
 
+    function withdraw(address to, uint256 amount) external guestOnly {
+        _withdraw(to, amount);
+    }
+
     function lift(uint256 wad) external {
         lift(wad, glLift);
     }
@@ -93,6 +98,14 @@ contract OptimismDomainHost is DomainHost {
             abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, wad),
             gasLimit
         );
+    }
+
+    function release(uint256 _lid, uint256 wad) external guestOnly {
+        _release(_lid, wad);
+    }
+
+    function push(uint256 _lid, int256 wad) external guestOnly {
+        _push(_lid, wad);
     }
 
     function rectify() external {
@@ -119,6 +132,10 @@ contract OptimismDomainHost is DomainHost {
         );
     }
 
+    function tell(uint256 _lid, uint256 value) external guestOnly {
+        _tell(_lid, value);
+    }
+
     function exit(address usr, uint256 wad) external {
         exit(usr, wad, glExit);
     }
@@ -143,6 +160,10 @@ contract OptimismDomainHost is DomainHost {
         );
     }
 
+    function finalizeRegisterMint(TeleportGUID calldata teleport) external guestOnly {
+        _finalizeRegisterMint(teleport);
+    }
+
     function initializeSettle(uint256 index) external {
         initializeSettle(index, glInitializeSettle);
     }
@@ -153,6 +174,10 @@ contract OptimismDomainHost is DomainHost {
             abi.encodeWithSelector(DomainGuestLike.finalizeSettle.selector, _sourceDomain, _targetDomain, _amount),
             gasLimit
         );
+    }
+
+    function finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external guestOnly {
+        _finalizeSettle(sourceDomain, targetDomain, amount);
     }
 
 }
