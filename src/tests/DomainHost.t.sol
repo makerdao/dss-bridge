@@ -9,7 +9,7 @@ import { DaiMock } from "./mocks/DaiMock.sol";
 import { EscrowMock } from "./mocks/EscrowMock.sol";
 import { RouterMock } from "./mocks/RouterMock.sol";
 import { VatMock } from "./mocks/VatMock.sol";
-import { DomainHost, DomainGuestLike, TeleportGUID, getGUIDHash, Settlement } from "../DomainHost.sol";
+import { DomainHost, DomainGuestLike, TeleportGUID, getGUIDHash } from "../DomainHost.sol";
 import "../TeleportGUID.sol";
 
 contract EmptyDomainHost is DomainHost {
@@ -86,12 +86,12 @@ contract EmptyDomainHost is DomainHost {
     function finalizeRegisterMint(TeleportGUID calldata teleport) external guestOnly {
         _finalizeRegisterMint(teleport);
     }
-    function initializeSettle(uint256 index) external {
-        (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) = _initializeSettle(index);
-        lastPayload = abi.encodeWithSelector(DomainGuestLike.finalizeSettle.selector, _sourceDomain, _targetDomain, _amount);
+    function initializeSettle(bytes32 sourceDomain, bytes32 targetDomain) external {
+        uint256 _amount = _initializeSettle(sourceDomain, targetDomain);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.finalizeSettle.selector, sourceDomain, targetDomain, _amount);
     }
-    function undoInitializeSettle(uint256 index) external {
-        _undoInitializeSettle(index);
+    function undoInitializeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external {
+        _undoInitializeSettle(sourceDomain, targetDomain, amount);
     }
     function finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external guestOnly {
         _finalizeSettle(sourceDomain, targetDomain, amount);
@@ -133,8 +133,8 @@ contract DomainHostTest is DSSTest {
     event InitializeRegisterMint(TeleportGUID teleport);
     event FinalizeRegisterMint(TeleportGUID teleport);
     event Settle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
-    event InitializeSettle(uint256 index, bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
-    event UndoInitializeSettle(uint256 index, bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
+    event InitializeSettle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
+    event UndoInitializeSettle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
     event FinalizeSettle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
 
     function postSetup() internal virtual override {
@@ -745,20 +745,15 @@ contract DomainHostTest is DSSTest {
         vat.suck(address(123), address(this), 100 * RAD);
         daiJoin.exit(address(host), 100 ether);
 
-        assertEq(host.settlementQueueCount(), 0);
+        assertEq(host.settlements(SOURCE_DOMAIN, TARGET_DOMAIN), 0);
         assertEq(dai.balanceOf(address(escrow)), 0);
 
         vm.expectEmit(true, true, true, true);
         emit Settle(SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether);
         host.settle(SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether);
 
-        assertEq(host.settlementQueueCount(), 1);
+        assertEq(host.settlements(SOURCE_DOMAIN, TARGET_DOMAIN), 100 ether);
         assertEq(dai.balanceOf(address(escrow)), 100 ether);
-        (bytes32 sourceDomain, bytes32 targetDomain, uint256 amount, bool sent) = host.settlementQueue(0);
-        assertEq(sourceDomain, SOURCE_DOMAIN);
-        assertEq(targetDomain, TARGET_DOMAIN);
-        assertEq(amount, 100 ether);
-        assertEq(sent, false);
     }
 
     function testInitializeSettle() public {
@@ -767,67 +762,36 @@ contract DomainHostTest is DSSTest {
 
         host.settle(SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether);
 
-        vm.expectEmit(true, true, true, true);
-        emit InitializeSettle(0, SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether);
-        host.initializeSettle(0);
+        assertEq(host.settlements(SOURCE_DOMAIN, TARGET_DOMAIN), 100 ether);
 
-        assertEq(host.settlementQueueCount(), 1);
-        (bytes32 sourceDomain, bytes32 targetDomain, uint256 amount, bool sent) = host.settlementQueue(0);
-        assertEq(sourceDomain, SOURCE_DOMAIN);
-        assertEq(targetDomain, TARGET_DOMAIN);
-        assertEq(amount, 100 ether);
-        assertEq(sent, true);
+        vm.expectEmit(true, true, true, true);
+        emit InitializeSettle(SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether);
+        host.initializeSettle(SOURCE_DOMAIN, TARGET_DOMAIN);
+
+        assertEq(host.settlements(SOURCE_DOMAIN, TARGET_DOMAIN), 0);
         assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.finalizeSettle.selector, SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether));
     }
 
     function testInitializeSettleNotFound() public {
-        vm.expectRevert("DomainHost/settlement-not-found");
-        host.initializeSettle(0);
-    }
-
-    function testInitializeSettleAlreadySent() public {
-        vat.suck(address(123), address(this), 100 * RAD);
-        daiJoin.exit(address(host), 100 ether);
-
-        host.settle(SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether);
-        host.initializeSettle(0);
-
-        vm.expectRevert("DomainHost/settlement-already-sent");
-        host.initializeSettle(0);
+        vm.expectRevert("DomainHost/settlement-zero");
+        host.initializeSettle(SOURCE_DOMAIN, TARGET_DOMAIN);
     }
 
     function testUndoInitializeSettle() public {
-        vat.suck(address(123), address(this), 100 * RAD);
-        daiJoin.exit(address(host), 100 ether);
+        vat.suck(address(123), address(this), 150 * RAD);
+        daiJoin.exit(address(host), 150 ether);
 
         host.settle(SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether);
-        host.initializeSettle(0);
+        host.initializeSettle(SOURCE_DOMAIN, TARGET_DOMAIN);
+        host.settle(SOURCE_DOMAIN, TARGET_DOMAIN, 50 ether);
+
+        assertEq(host.settlements(SOURCE_DOMAIN, TARGET_DOMAIN), 50 ether);
 
         vm.expectEmit(true, true, true, true);
-        emit UndoInitializeSettle(0, SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether);
-        host.undoInitializeSettle(0);
+        emit UndoInitializeSettle(SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether);
+        host.undoInitializeSettle(SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether);
 
-        assertEq(host.settlementQueueCount(), 1);
-        (bytes32 sourceDomain, bytes32 targetDomain, uint256 amount, bool sent) = host.settlementQueue(0);
-        assertEq(sourceDomain, SOURCE_DOMAIN);
-        assertEq(targetDomain, TARGET_DOMAIN);
-        assertEq(amount, 100 ether);
-        assertEq(sent, false);
-    }
-
-    function testUndoInitializeSettleNotFound() public {
-        vm.expectRevert("DomainHost/settlement-not-found");
-        host.undoInitializeSettle(0);
-    }
-
-    function testUndoInitializeSettleNotSent() public {
-        vat.suck(address(123), address(this), 100 * RAD);
-        daiJoin.exit(address(host), 100 ether);
-
-        host.settle(SOURCE_DOMAIN, TARGET_DOMAIN, 100 ether);
-
-        vm.expectRevert("DomainHost/settlement-not-sent");
-        host.undoInitializeSettle(0);
+        assertEq(host.settlements(SOURCE_DOMAIN, TARGET_DOMAIN), 150 ether);
     }
 
     function testFinalizeSettle() public {

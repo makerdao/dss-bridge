@@ -77,8 +77,8 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
         ArbitrumDomainHost(address(host)).initializeRegisterMint{value:1 ether}(teleport, 1 ether, 0);
     }
 
-    function hostInitializeSettle(uint256 index) internal virtual override {
-        ArbitrumDomainHost(address(host)).initializeSettle{value:1 ether}(index, 1 ether, 0);
+    function hostInitializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal virtual override {
+        ArbitrumDomainHost(address(host)).initializeSettle{value:1 ether}(sourceDomain, targetDomain, 1 ether, 0);
     }
 
     function guestRelease() internal virtual override {
@@ -101,8 +101,8 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
         ArbitrumDomainGuest(address(guest)).initializeRegisterMint(teleport);
     }
 
-    function guestInitializeSettle(uint256 index) internal virtual override {
-        ArbitrumDomainGuest(address(guest)).initializeSettle(index);
+    function guestInitializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal virtual override {
+        ArbitrumDomainGuest(address(guest)).initializeSettle(sourceDomain, targetDomain);
     }
 
 }

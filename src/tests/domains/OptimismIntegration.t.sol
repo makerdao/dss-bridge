@@ -89,8 +89,8 @@ contract OptimismIntegrationTest is IntegrationBaseTest {
         OptimismDomainHost(address(host)).initializeRegisterMint(teleport);
     }
 
-    function hostInitializeSettle(uint256 index) internal virtual override {
-        OptimismDomainGuest(address(host)).initializeSettle(index);
+    function hostInitializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal virtual override {
+        OptimismDomainGuest(address(host)).initializeSettle(sourceDomain, targetDomain);
     }
 
     function guestRelease() internal virtual override {
@@ -113,8 +113,8 @@ contract OptimismIntegrationTest is IntegrationBaseTest {
         OptimismDomainGuest(address(guest)).initializeRegisterMint(teleport);
     }
 
-    function guestInitializeSettle(uint256 index) internal virtual override {
-        OptimismDomainGuest(address(guest)).initializeSettle(index);
+    function guestInitializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal virtual override {
+        OptimismDomainGuest(address(guest)).initializeSettle(sourceDomain, targetDomain);
     }
 
 }

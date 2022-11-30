@@ -155,14 +155,14 @@ contract OptimismDomainGuest is DomainGuest {
         _finalizeRegisterMint(teleport);
     }
 
-    function initializeSettle(uint256 index) external {
-        initializeSettle(index, glInitializeSettle);
+    function initializeSettle(bytes32 sourceDomain, bytes32 targetDomain) external {
+        initializeSettle(sourceDomain, targetDomain, glInitializeSettle);
     }
-    function initializeSettle(uint256 index, uint32 gasLimit) public {
-        (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) = _initializeSettle(index);
+    function initializeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint32 gasLimit) public {
+        uint256 _amount = _initializeSettle(sourceDomain, targetDomain);
         l2messenger.sendMessage(
             host,
-            abi.encodeWithSelector(DomainHostLike.finalizeSettle.selector, _sourceDomain, _targetDomain, _amount),
+            abi.encodeWithSelector(DomainHostLike.finalizeSettle.selector, sourceDomain, targetDomain, _amount),
             gasLimit
         );
     }

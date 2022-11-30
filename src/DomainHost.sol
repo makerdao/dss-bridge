@@ -59,13 +59,6 @@ interface RouterLike {
     function registerMint(TeleportGUID calldata teleport) external;
 }
 
-struct Settlement {
-    bytes32 sourceDomain;
-    bytes32 targetDomain;
-    uint256 amount;
-    bool    sent;
-}
-
 /// @title Support for xchain MCD, canonical DAI and Maker Teleport - host instance
 /// @dev This is just the business logic which needs concrete message-passing implementation
 abstract contract DomainHost {
@@ -73,7 +66,7 @@ abstract contract DomainHost {
     // --- Data ---
     mapping (address => uint256) public wards;
     mapping (bytes32 => bool)    public teleports;
-    Settlement[]                 public settlementQueue;
+    mapping (bytes32 => mapping (bytes32 => uint256)) public settlements;
 
     address public vow;
     uint256 public lid;         // Local ordering id
@@ -119,8 +112,8 @@ abstract contract DomainHost {
     event InitializeRegisterMint(TeleportGUID teleport);
     event FinalizeRegisterMint(TeleportGUID teleport);
     event Settle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
-    event InitializeSettle(uint256 index, bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
-    event UndoInitializeSettle(uint256 index, bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
+    event InitializeSettle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
+    event UndoInitializeSettle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
     event FinalizeSettle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
 
     modifier auth {
@@ -424,44 +417,29 @@ abstract contract DomainHost {
 
     function settle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external auth {
         require(dai.transfer(escrow, amount), "DomainHost/transfer-failed");
-        settlementQueue.push(Settlement({
-            sourceDomain: sourceDomain,
-            targetDomain: targetDomain,
-            amount: amount,
-            sent: false
-        }));
+        settlements[sourceDomain][targetDomain] += amount;
 
         emit Settle(sourceDomain, targetDomain, amount);
     }
-    function _initializeSettle(uint256 index) internal returns (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) {
-        require(index < settlementQueue.length, "DomainHost/settlement-not-found");
-        Settlement memory settlement = settlementQueue[index];
-        require(!settlement.sent, "DomainHost/settlement-already-sent");
-        settlementQueue[index].sent = true;
+    function _initializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal returns (uint256 _amount) {
+        uint256 amount = settlements[sourceDomain][targetDomain];
+        require(amount > 0, "DomainHost/settlement-zero");
 
-        _sourceDomain = settlement.sourceDomain;
-        _targetDomain = settlement.targetDomain;
-        _amount = settlement.amount;
+        _amount = amount;
+        settlements[sourceDomain][targetDomain] = 0;
 
-        emit InitializeSettle(index, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
+        emit InitializeSettle(sourceDomain, targetDomain, amount);
     }
-    function _undoInitializeSettle(uint256 index) internal {
-        require(index < settlementQueue.length, "DomainHost/settlement-not-found");
-        Settlement memory settlement = settlementQueue[index];
-        require(settlement.sent, "DomainHost/settlement-not-sent");
-        settlementQueue[index].sent = false;
+    function _undoInitializeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) internal {
+        settlements[sourceDomain][targetDomain] += amount;
 
-        emit UndoInitializeSettle(index, settlement.sourceDomain, settlement.targetDomain, settlement.amount);
+        emit UndoInitializeSettle(sourceDomain, targetDomain, amount);
     }
     function _finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) internal {
         require(dai.transferFrom(escrow, address(this), amount), "DomainHost/transfer-failed");
         router.settle(sourceDomain, targetDomain, amount);
 
         emit FinalizeSettle(sourceDomain, targetDomain, amount);
-    }
-
-    function settlementQueueCount() external view returns (uint256) {
-        return settlementQueue.length;
     }
 
 }

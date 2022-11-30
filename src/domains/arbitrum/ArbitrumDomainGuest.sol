@@ -116,11 +116,11 @@ contract ArbitrumDomainGuest is DomainGuest {
         _finalizeRegisterMint(teleport);
     }
 
-    function initializeSettle(uint256 index) external {
-        (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) = _initializeSettle(index);
+    function initializeSettle(bytes32 sourceDomain, bytes32 targetDomain) external {
+        uint256 _amount = _initializeSettle(sourceDomain, targetDomain);
         arbSys.sendTxToL1(
             host,
-            abi.encodeWithSelector(DomainHostLike.finalizeSettle.selector, _sourceDomain, _targetDomain, _amount)
+            abi.encodeWithSelector(DomainHostLike.finalizeSettle.selector, sourceDomain, targetDomain, _amount)
         );
     }
 
