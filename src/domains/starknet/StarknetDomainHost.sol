@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// OptimismDomainHost.sol -- DomainHost for Optimism
+/// StarknetDomainHost.sol -- DomainHost for Starknet
 
 // Copyright (C) 2022 Dai Foundation
 //
@@ -21,12 +21,12 @@ pragma solidity ^0.8.15;
 
 import {DomainHost,DomainGuestLike,Settlement,TeleportGUID} from "../../DomainHost.sol";
 
-interface StarkNetLike {
+interface StarknetLike {
     function sendMessageToL2(
         uint256 to,
         uint256 selector,
         uint256[] calldata payload
-    ) external payable returns (bytes32);
+    ) external payable returns (bytes32, uint256);
 
     function consumeMessageFromL2(
         uint256 from,
@@ -38,14 +38,14 @@ interface StarkNetLike {
         uint256 selector,
         uint256[] calldata payload,
         uint256 nonce
-    ) external;
+    ) external returns (bytes32);
 
     function cancelL1ToL2Message(
         uint256 toAddress,
         uint256 selector,
         uint256[] calldata payload,
         uint256 nonce
-    ) external;
+    ) external returns (bytes32);
 }
 
 contract StarknetDomainHost is DomainHost {
@@ -60,12 +60,12 @@ contract StarknetDomainHost is DomainHost {
     //  from starkware.starknet.compiler.compile import get_selector_from_name
     //  print(get_selector_from_name('deposit'))
     uint256 constant DEPOSIT                  = 1; // TODO
-    uint256 constant LIFT                     = 1; // TODO
-    uint256 constant RECTIFY                  = 1; // TODO
-    uint256 constant CAGE                     = 1; // TODO
-    uint256 constant EXIT                     = 1; // TODO
-    uint256 constant INITIALIZE_REGISTER_MINT = 1; // TODO
-    uint256 constant INITIALIZE_SETTLE        = 1; // TODO
+    uint256 constant LIFT                     = 2; // TODO
+    uint256 constant RECTIFY                  = 3; // TODO
+    uint256 constant CAGE                     = 4; // TODO
+    uint256 constant EXIT                     = 5; // TODO
+    uint256 constant INITIALIZE_REGISTER_MINT = 6; // TODO
+    uint256 constant INITIALIZE_SETTLE        = 7; // TODO
 
     // l2->l1 selectors
     uint256 constant WITHDRAW        = 1;
@@ -76,54 +76,73 @@ contract StarknetDomainHost is DomainHost {
     uint256 constant FINALIZE_SETTLE = 6;
 
     // data
-    StarkNetLike public immutable starkNet;
+    StarknetLike public immutable starknet;
     uint256 public immutable l2Dai;
     uint256 public immutable guest;
+
+    uint256 public ceiling = 0;
+    uint256 public maxDeposit = type(uint256).max;
+
+    event LogCeiling(uint256 ceiling);
+    event LogMaxDeposit(uint256 maxDeposit);
 
     constructor(
         bytes32 _ilk,
         address _daiJoin,
         address _escrow,
         address _router,
-        address _starkNet,
+        address _starknet,
         uint256 _guest,
         uint256 _l2Dai
     ) DomainHost(_ilk, _daiJoin, _escrow, _router) {
-        starkNet = StarkNetLike(_starkNet);
+        starknet = StarknetLike(_starknet);
         guest = _guest;
         l2Dai = _l2Dai;
     }
 
+    function setCeiling(uint256 _ceiling) external auth {
+        ceiling = _ceiling;
+        emit LogCeiling(_ceiling);
+    }
+
+    function setMaxDeposit(uint256 _maxDeposit) external auth {
+        maxDeposit = _maxDeposit;
+        emit LogMaxDeposit(_maxDeposit);
+    }
+
     function depositPayload(uint256 to, uint256 amount, address sender) private pure returns (uint256[] memory) {
-        uint256[] memory payload = new uint256[](5);
-        (payload[0], payload[1]) = split(to);
-        (payload[2], payload[3]) = split(amount);
-        payload[4] = uint256(uint160(sender)); // deposit cancelation access control
+        uint256[] memory payload = new uint256[](4);
+        payload[0] = to;
+        (payload[1], payload[2]) = split(amount);
+        payload[3] = uint256(uint160(sender)); // deposit cancelation access control
 
         return payload;
     }
 
     // TODO: limits
 
-    // TODO: Starkgate compatibility
-    // TODO: use uint256 or bytes32 for to arg?
-    function deposit(uint256 to, uint256 amount) external payable validL2Address(to) {
-        _deposit(bytes32(to), amount);
+    // TODO: it is starkgate convention to represent l2 addresses with uint256
+    function deposit(uint256 amount, uint256 to) external payable validL2Address(to) {
         require(uint256(to) != l2Dai, "StarknetDomainHost/invalid-address");
+        require(amount <= maxDeposit, "StarknetDomainHost/above-max-deposit");
 
-        starkNet.sendMessageToL2{value: msg.value}(
+        _deposit(bytes32(to), amount);
+
+        starknet.sendMessageToL2{value: msg.value}(
             guest, DEPOSIT, depositPayload(to, amount, msg.sender)
         );
+
+        require(dai.balanceOf(escrow) <= ceiling, "StarknetDomainHost/above-ceiling");
     }
 
     function startUndoDeposit(uint256 to, uint256 amount, uint256 nonce) internal {
-        starkNet.startL1ToL2MessageCancellation(
+        starknet.startL1ToL2MessageCancellation(
             guest, DEPOSIT, depositPayload(to, amount, msg.sender), nonce
         );
     }
 
     function undoDeposit(uint256 to, uint256 amount, uint256 nonce) internal {
-        starkNet.cancelL1ToL2Message(
+        starknet.cancelL1ToL2Message(
             guest, DEPOSIT, depositPayload(to, amount, msg.sender), nonce
         );
         _undoDeposit(msg.sender, bytes32(to), amount);
@@ -138,7 +157,7 @@ contract StarknetDomainHost is DomainHost {
         payload[1] = uint256(uint160(to)); // TODO: change versus v1, verify l2 implementation
         (payload[2], payload[3]) = split(amount);
 
-        starkNet.consumeMessageFromL2(guest, payload);
+        starknet.consumeMessageFromL2(guest, payload);
     }
 
     function lift(uint256 wad) external payable {
@@ -147,7 +166,7 @@ contract StarknetDomainHost is DomainHost {
         (payload[0], payload[1]) = split(_rid);
         (payload[2], payload[3]) = split(wad);
 
-        starkNet.sendMessageToL2{value: msg.value}(guest, LIFT, payload);
+        starknet.sendMessageToL2{value: msg.value}(guest, LIFT, payload);
     }
 
     function rectify() external payable {
@@ -156,7 +175,7 @@ contract StarknetDomainHost is DomainHost {
         (payload[0], payload[1]) = split(_rid);
         (payload[2], payload[3]) = split(_wad);
 
-        starkNet.sendMessageToL2{value: msg.value}(guest, RECTIFY, payload);
+        starknet.sendMessageToL2{value: msg.value}(guest, RECTIFY, payload);
     }
 
     function cage() external payable {
@@ -164,7 +183,7 @@ contract StarknetDomainHost is DomainHost {
         uint256[] memory payload = new uint256[](2);
         (payload[0], payload[1]) = split(_rid);
 
-        starkNet.sendMessageToL2{value: msg.value}(guest, CAGE, payload);
+        starknet.sendMessageToL2{value: msg.value}(guest, CAGE, payload);
     }
 
     function exitPayload(
@@ -182,13 +201,13 @@ contract StarknetDomainHost is DomainHost {
 
         _exit(bytes32(usr), wad);
 
-        starkNet.sendMessageToL2{value: msg.value}(
+        starknet.sendMessageToL2{value: msg.value}(
             guest, EXIT, exitPayload(usr, wad, msg.sender)
         );
     }
 
     function startUndoExit(uint256 usr, uint256 wad, uint256 nonce) internal {
-        starkNet.startL1ToL2MessageCancellation(
+        starknet.startL1ToL2MessageCancellation(
             guest, EXIT, exitPayload(usr, wad, msg.sender), nonce
         );
     }
@@ -197,7 +216,7 @@ contract StarknetDomainHost is DomainHost {
         address originalSender, uint256 usr, uint256 wad, uint256 nonce
     ) internal {
 
-        starkNet.cancelL1ToL2Message(
+        starknet.cancelL1ToL2Message(
             guest, EXIT, exitPayload(usr, wad, msg.sender), nonce
         );
         _undoExit(originalSender, bytes32(usr), wad);
@@ -217,7 +236,7 @@ contract StarknetDomainHost is DomainHost {
         payload[7] = uint256(teleport.nonce);
         payload[8] = uint256(teleport.timestamp);
 
-        starkNet.sendMessageToL2{value: msg.value}(guest, INITIALIZE_REGISTER_MINT, payload);
+        starknet.sendMessageToL2{value: msg.value}(guest, INITIALIZE_REGISTER_MINT, payload);
     }
 
     function initializeSettle(uint256 index) external payable {
@@ -230,7 +249,7 @@ contract StarknetDomainHost is DomainHost {
         (payload[2], payload[3]) = split(uint256(_targetDomain));
         (payload[4], payload[5]) = split(_amount);
 
-        starkNet.sendMessageToL2{value: msg.value}(guest, INITIALIZE_SETTLE, payload);
+        starknet.sendMessageToL2{value: msg.value}(guest, INITIALIZE_SETTLE, payload);
     }
 
     function startUndoInitializeSettle(uint256 index, uint256 nonce) external {
@@ -243,7 +262,7 @@ contract StarknetDomainHost is DomainHost {
         (payload[2], payload[3]) = split(uint256(settlement.targetDomain));
         (payload[4], payload[5]) = split(settlement.amount);
 
-        starkNet.startL1ToL2MessageCancellation(
+        starknet.startL1ToL2MessageCancellation(
             guest, INITIALIZE_SETTLE, payload, nonce
         );
     }
@@ -258,7 +277,7 @@ contract StarknetDomainHost is DomainHost {
         (payload[2], payload[3]) = split(uint256(settlement.targetDomain));
         (payload[4], payload[5]) = split(settlement.amount);
 
-        starkNet.cancelL1ToL2Message(guest, INITIALIZE_SETTLE, payload, nonce);
+        starknet.cancelL1ToL2Message(guest, INITIALIZE_SETTLE, payload, nonce);
 
         _undoInitializeSettle(index);
     }
@@ -272,7 +291,7 @@ contract StarknetDomainHost is DomainHost {
         (payload[1], payload[2]) = split(_lid);
         (payload[3], payload[4]) = split(wad);
 
-        starkNet.consumeMessageFromL2(guest, payload);
+        starknet.consumeMessageFromL2(guest, payload);
     }
 
     function push(uint256 _lid, int256 wad) external {
@@ -284,7 +303,7 @@ contract StarknetDomainHost is DomainHost {
         (payload[1], payload[2]) = split(_lid);
         (payload[3], payload[4]) = split(uint256(wad));
 
-        starkNet.consumeMessageFromL2(guest, payload);
+        starknet.consumeMessageFromL2(guest, payload);
     }
 
     function tell(uint256 _lid, uint256 value) external ordered(_lid) {
@@ -296,7 +315,7 @@ contract StarknetDomainHost is DomainHost {
         (payload[1], payload[2]) = split(_lid);
         (payload[3], payload[4]) = split(value);
 
-        starkNet.consumeMessageFromL2(guest, payload);
+        starknet.consumeMessageFromL2(guest, payload);
     }
 
     function finalizeRegisterMint(TeleportGUID calldata teleport) external {
@@ -312,7 +331,7 @@ contract StarknetDomainHost is DomainHost {
         payload[8] = uint256(teleport.nonce);
         payload[9] = uint256(teleport.timestamp);
 
-        starkNet.consumeMessageFromL2(guest, payload);
+        starknet.consumeMessageFromL2(guest, payload);
     }
 
     function finalizeSettle(
@@ -327,7 +346,7 @@ contract StarknetDomainHost is DomainHost {
         (payload[3], payload[4]) = split(uint256(targetDomain));
         (payload[5], payload[6]) = split(amount);
 
-        starkNet.consumeMessageFromL2(guest, payload);
+        starknet.consumeMessageFromL2(guest, payload);
     }
 
     function split(uint256 value) internal pure returns (uint256, uint256) {
