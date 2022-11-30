@@ -52,6 +52,7 @@ interface DaiLike {
     function transfer(address dst, uint256 wad) external returns (bool);
     function transferFrom(address src, address dst, uint256 wad) external returns (bool);
     function approve(address usr, uint wad) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
 }
 
 interface RouterLike {
