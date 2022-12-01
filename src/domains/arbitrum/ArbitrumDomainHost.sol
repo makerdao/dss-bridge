@@ -297,12 +297,14 @@ contract ArbitrumDomainHost is DomainHost {
     }
 
     function initializeSettle(
-        uint256 index,
+        bytes32 sourceDomain,
+        bytes32 targetDomain,
         uint256 maxSubmissionCost,
         uint256 maxGas,
         uint256 gasPriceBid
     ) public payable {
-        (bytes32 _sourceDomain, bytes32 _targetDomain, uint256 _amount) = _initializeSettle(index);
+        uint256 _amount = _initializeSettle(sourceDomain, targetDomain);
+        bytes memory data = abi.encodeWithSelector(DomainGuestLike.finalizeSettle.selector, sourceDomain, targetDomain, _amount);
         inbox.createRetryableTicket{value: msg.value}(
             guest,
             0, // we always assume that l2CallValue = 0
@@ -311,16 +313,18 @@ contract ArbitrumDomainHost is DomainHost {
             msg.sender,
             maxGas,
             gasPriceBid,
-            abi.encodeWithSelector(DomainGuestLike.finalizeSettle.selector, _sourceDomain, _targetDomain, _amount)
+            data
         );
     }
     function initializeSettle(
-        uint256 index,
+        bytes32 sourceDomain,
+        bytes32 targetDomain,
         uint256 maxSubmissionCost,
         uint256 gasPriceBid
     ) external payable {
         initializeSettle(
-            index,
+            sourceDomain,
+            targetDomain,
             maxSubmissionCost,
             glDeposit,
             gasPriceBid

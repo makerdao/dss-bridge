@@ -1,4 +1,4 @@
-# xdomain-dss
+# dss-bridge
 
 Connect an instance of MCD to a cross-chain guest instance. The `DomainHost` is designed to plug into the Host's dss instance and the `DomainGuest` controls the Guest dss instance on the remote chain. For example, `DomainHost` could be plugged into the MCD master instance on Ethereum and a `DomainGuest` controller would be plugged into the Optimism slave instance of MCD. This is recursive, so that when layer 3s come online we can use another Host/Guest pairing on the L2.
 

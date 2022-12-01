@@ -216,13 +216,13 @@ abstract contract IntegrationBaseTest is DSSTest {
     function hostExit(address usr, uint256 wad) internal virtual;
     function hostDeposit(address to, uint256 amount) internal virtual;
     function hostInitializeRegisterMint(TeleportGUID memory teleport) internal virtual;
-    function hostInitializeSettle(uint256 index) internal virtual;
+    function hostInitializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal virtual;
     function guestRelease() internal virtual;
     function guestPush() internal virtual;
     function guestTell() internal virtual;
     function guestWithdraw(address to, uint256 amount) internal virtual;
     function guestInitializeRegisterMint(TeleportGUID memory teleport) internal virtual;
-    function guestInitializeSettle(uint256 index) internal virtual;
+    function guestInitializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal virtual;
 
     function testRaiseDebtCeiling() public {
         uint256 escrowDai = dss.dai.balanceOf(escrow);
@@ -607,14 +607,14 @@ abstract contract IntegrationBaseTest is DSSTest {
         // Host -> Guest
         dss.dai.mint(address(host), 100 ether);
         host.settle(domain, rdomain, 100 ether);
-        hostInitializeSettle(0);
+        hostInitializeSettle(domain, rdomain);
         guestDomain.relayFromHost(true);
         assertEq(rdss.vat.dai(address(rteleport.join)), 100 * RAD);
 
         // Guest -> Host
         rdss.dai.setBalance(address(guest), 50 ether);
         guest.settle(rdomain, domain, 50 ether);
-        guestInitializeSettle(0);
+        guestInitializeSettle(rdomain, domain);
         guestDomain.relayToHost(true);
         assertEq(dss.vat.dai(address(teleport.join)), 50 * RAD);
     }
