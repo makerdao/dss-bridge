@@ -85,7 +85,7 @@ contract StarknetHostTest is DSSTest {
         assertEq(host.live(), 1);
     }
 
-    function testDepost() public {
+    function testDeposit() public {
         vat.suck(address(123), address(this), 100 * RAD);
         daiJoin.exit(address(this), 100 ether);
         dai.approve(address(host), 100 ether);
