@@ -19,7 +19,7 @@
 
 pragma solidity ^0.8.15;
 
-import {DomainHost,DomainGuestLike,Settlement,TeleportGUID} from "../../DomainHost.sol";
+import { DomainHost, DomainGuestLike, TeleportGUID } from "../../DomainHost.sol";
 
 interface StarknetLike {
     function sendMessageToL2(
@@ -239,47 +239,49 @@ contract StarknetDomainHost is DomainHost {
         starknet.sendMessageToL2{value: msg.value}(guest, INITIALIZE_REGISTER_MINT, payload);
     }
 
-    function initializeSettle(uint256 index) external payable {
-
-        bytes32 _sourceDomain; bytes32 _targetDomain; uint256 _amount;
-        (_sourceDomain, _targetDomain, _amount) = _initializeSettle(index);
-
+    function settlePayload(
+        bytes32 sourceDomain, bytes32 targetDomain, uint256 amount
+    ) internal pure returns (uint256[] memory) {
         uint256[] memory payload = new uint256[](6);
-        (payload[0], payload[1]) = split(uint256(_sourceDomain));
-        (payload[2], payload[3]) = split(uint256(_targetDomain));
-        (payload[4], payload[5]) = split(_amount);
-
-        starknet.sendMessageToL2{value: msg.value}(guest, INITIALIZE_SETTLE, payload);
+        (payload[0], payload[1]) = split(uint256(sourceDomain));
+        (payload[2], payload[3]) = split(uint256(targetDomain));
+        (payload[4], payload[5]) = split(amount);
+        return payload;
     }
 
-    function startUndoInitializeSettle(uint256 index, uint256 nonce) external {
+    function initializeSettle(bytes32 sourceDomain, bytes32 targetDomain) external payable {
 
-        Settlement memory settlement = settlementQueue[index];
-        require(!settlement.sent, "DomainHost/settlement-already-sent");
+        uint256 amount = _initializeSettle(sourceDomain, targetDomain);
 
-        uint256[] memory payload = new uint256[](6);
-        (payload[0], payload[1]) = split(uint256(settlement.sourceDomain));
-        (payload[2], payload[3]) = split(uint256(settlement.targetDomain));
-        (payload[4], payload[5]) = split(settlement.amount);
-
-        starknet.startL1ToL2MessageCancellation(
-            guest, INITIALIZE_SETTLE, payload, nonce
+        starknet.sendMessageToL2{value: msg.value}(
+            guest,
+            INITIALIZE_SETTLE,
+            settlePayload(sourceDomain, targetDomain, amount)
         );
     }
 
-    function undoInitializeSettle(uint256 index, uint256 nonce) external {
+    function startUndoInitializeSettle(
+        bytes32 sourceDomain, bytes32 targetDomain, uint256 amount, uint256 nonce
+    ) external {
+        starknet.startL1ToL2MessageCancellation(
+            guest,
+            INITIALIZE_SETTLE,
+            settlePayload(sourceDomain, targetDomain, amount),
+            nonce
+        );
+    }
 
-        Settlement memory settlement = settlementQueue[index];
-        require(!settlement.sent, "DomainHost/settlement-already-sent");
+    function undoInitializeSettle(
+        bytes32 sourceDomain, bytes32 targetDomain, uint256 amount, uint256 nonce
+    ) external {
+        starknet.cancelL1ToL2Message(
+            guest,
+            INITIALIZE_SETTLE,
+            settlePayload(sourceDomain, targetDomain, amount),
+            nonce
+        );
 
-        uint256[] memory payload = new uint256[](6);
-        (payload[0], payload[1]) = split(uint256(settlement.sourceDomain));
-        (payload[2], payload[3]) = split(uint256(settlement.targetDomain));
-        (payload[4], payload[5]) = split(settlement.amount);
-
-        starknet.cancelL1ToL2Message(guest, INITIALIZE_SETTLE, payload, nonce);
-
-        _undoInitializeSettle(index);
+        _undoInitializeSettle(sourceDomain, targetDomain, amount);
     }
 
     function release(uint256 _lid, uint256 wad) external {
