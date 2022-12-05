@@ -206,6 +206,7 @@ contract StarknetDomainHost is DomainHost {
         );
     }
 
+    // TODO: add auth?
     function startUndoExit(uint256 usr, uint256 wad, uint256 nonce) internal {
         starknet.startL1ToL2MessageCancellation(
             guest, EXIT, exitPayload(usr, wad, msg.sender), nonce
@@ -260,6 +261,7 @@ contract StarknetDomainHost is DomainHost {
         );
     }
 
+    // TODO: add auth?
     function startUndoInitializeSettle(
         bytes32 sourceDomain, bytes32 targetDomain, uint256 amount, uint256 nonce
     ) external {
