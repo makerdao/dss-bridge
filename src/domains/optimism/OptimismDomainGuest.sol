@@ -103,14 +103,26 @@ contract OptimismDomainGuest is DomainGuest {
         );
     }
 
-    function push() external {
-        push(glPush);
+    function surplus() external {
+        surplus(glPush);
     }
-    function push(uint32 gasLimit) public {
-        (uint256 _rid, int256 _surplus) = _push();
+    function surplus(uint32 gasLimit) public {
+        (uint256 _rid, uint256 _wad) = _surplus();
         l2messenger.sendMessage(
             host,
-            abi.encodeWithSelector(DomainHostLike.push.selector, _rid, _surplus),
+            abi.encodeWithSelector(DomainHostLike.surplus.selector, _rid, _wad),
+            gasLimit
+        );
+    }
+
+    function deficit() external {
+        deficit(glPush);
+    }
+    function deficit(uint32 gasLimit) public {
+        (uint256 _rid, uint256 _wad) = _deficit();
+        l2messenger.sendMessage(
+            host,
+            abi.encodeWithSelector(DomainHostLike.deficit.selector, _rid, _wad),
             gasLimit
         );
     }

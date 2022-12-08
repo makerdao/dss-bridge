@@ -95,7 +95,8 @@ abstract contract DomainHost {
     event File(bytes32 indexed what, address data);
     event Lift(uint256 wad);
     event Release(uint256 wad);
-    event Push(int256 wad);
+    event Surplus(uint256 wad);
+    event Deficit(uint256 wad);
     event Rectify(uint256 wad);
     event Cage();
     event Tell(uint256 value);
@@ -286,18 +287,23 @@ abstract contract DomainHost {
         emit Release(wad);
     }
 
-    /// @notice Guest is pushing a surplus (or deficit)
+    /// @notice Guest is pushing a surplus
     /// @param _lid Local ordering id
-    /// @param wad The amount of DAI to push (or pull) [WAD]
-    function _push(uint256 _lid, int256 wad) internal ordered(_lid) {
-        if (wad >= 0) {
-            dai.transferFrom(address(escrow), address(this), uint256(wad));
-            daiJoin.join(address(vow), uint256(wad));
-        } else {
-            sin += uint256(-wad);
-        }
+    /// @param wad The amount of DAI to send to the vow [WAD]
+    function _surplus(uint256 _lid, uint256 wad) internal ordered(_lid) {
+        dai.transferFrom(address(escrow), address(this), uint256(wad));
+        daiJoin.join(address(vow), uint256(wad));
 
-        emit Push(wad);
+        emit Surplus(wad);
+    }
+
+    /// @notice Guest is pushing a deficit
+    /// @param _lid Local ordering id
+    /// @param wad The amount of DAI to account as sin [WAD]
+    function _deficit(uint256 _lid, uint256 wad) internal ordered(_lid) {
+        sin += wad;
+
+        emit Deficit(wad);
     }
 
     /// @notice Move bad debt from the remote domain into the local vow
