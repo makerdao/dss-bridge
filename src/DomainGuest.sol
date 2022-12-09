@@ -24,7 +24,8 @@ import "./TeleportGUID.sol";
 interface DomainHostLike {
     function withdraw(address to, uint256 amount) external;
     function release(uint256 _lid, uint256 wad) external;
-    function push(uint256 _lid, int256 wad) external;
+    function surplus(uint256 _lid, uint256 wad) external;
+    function deficit(uint256 _lid, uint256 wad) external;
     function tell(uint256 _lid, uint256 value) external;
     function finalizeRegisterMint(TeleportGUID calldata teleport) external;
     function finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external;
@@ -77,8 +78,9 @@ abstract contract DomainGuest {
     uint256 public lid;         // Local ordering id
     uint256 public rid;         // Remote ordering id
     uint256 public grain;       // Keep track of the pre-minted DAI in the remote escrow [WAD]
+    uint256 public dsin;        // Amount already requested to parent domain to re-capitalize this one but hasn't yet been paid [WAD]
     uint256 public live;
-    uint256 public dust;        // The dust limit for preventing spam attacks [RAD]
+    uint256 public dust;        // The dust limit for preventing spam attacks [WAD]
 
     VatLike     public immutable vat;
     DaiJoinLike public immutable daiJoin;
@@ -97,7 +99,8 @@ abstract contract DomainGuest {
     event File(bytes32 indexed what, uint256 data);
     event Lift(uint256 wad);
     event Release(uint256 burned);
-    event Push(int256 surplus);
+    event Surplus(uint256 wad);
+    event Deficit(uint256 wad);
     event Rectify(uint256 wad);
     event Cage();
     event Tell(uint256 value);
@@ -221,9 +224,10 @@ abstract contract DomainGuest {
     function _release() internal returns (uint256 _rid, uint256 _burned) {
         require(live == 1, "DomainGuest/not-live");
 
-        uint256 limit = _max(vat.Line() / RAY, _divup(vat.debt(), RAY));
-        require(grain >= limit + dust / RAY, "DomainGuest/dust");
-        _burned = grain - limit;
+        uint256 limit  = _max(vat.Line() / RAY, _divup(vat.debt(), RAY));
+        uint256 _grain = grain;
+        require(_grain >= limit + dust, "DomainGuest/dust");
+        _burned = _grain - limit;
         grain = limit;
 
         _rid = rid++;
@@ -231,43 +235,52 @@ abstract contract DomainGuest {
         emit Release(_burned);
     }
 
-    /// @notice Push surplus (or deficit) to the host dss
+    /// @notice Push surplus to the host dss
     /// @dev Should be run by keeper on a regular schedule
-    function _push() internal returns (uint256 _rid, int256 _surplus) {
+    function _surplus() internal returns (uint256 _rid, uint256 wad) {
         require(live == 1, "DomainGuest/not-live");
 
         _rid = rid++;
 
         uint256 _dai = vat.dai(address(this));
         uint256 _sin = vat.sin(address(this));
-        if (_dai >= _sin + dust) {
-            // We have a surplus
-            if (_sin > 0) vat.heal(_sin);
+        require(_dai > _sin, "DomainGuest/non-surplus");
+        unchecked { wad = (_dai - _sin) / RAY; } // Round against this contract for surplus
+        require(wad >= dust, "DomainGuest/dust");
 
-            uint256 wad = (_dai - _sin) / RAY;    // Round against this contract for surplus
+        // Burn the DAI and unload on the other side
+        vat.swell(address(this), -_int256(wad * RAY));
 
-            // Burn the DAI and unload on the other side
-            vat.swell(address(this), -_int256(wad * RAY));
-            _surplus = _int256(wad);
+        emit Surplus(wad);
+    }
 
-            emit Push(int256(wad));
-        } else if (_sin >= _dai + dust) {
-            // We have a deficit
-            if (_dai > 0) vat.heal(_dai);
+    /// @notice Push deficit to the host dss
+    /// @dev Should be run by keeper on a regular schedule
+    function _deficit() internal returns (uint256 _rid, uint256 wad) {
+        require(live == 1, "DomainGuest/not-live");
 
-            int256 deficit = -_int256(_divup(_sin - _dai, RAY));    // Round up to overcharge for deficit
-            _surplus = deficit;
+        _rid = rid++;
 
-            emit Push(deficit);
-        } else {
-            revert("DomainGuest/dust");
-        }
+        uint256 _dai   = vat.dai(address(this));
+        uint256 _sin   = vat.sin(address(this));
+        uint256 _dsin  = dsin;
+        uint256 _dSinR = _dsin * RAY;
+        require(_sin >= _dSinR, "DomainGuest/non-deficit-to-push");
+        unchecked { _sin = _sin - _dSinR; }
+        require(_sin > _dai, "DomainGuest/non-deficit");
+        unchecked { wad = _divup(_sin - _dai, RAY); } // Round up to overcharge for deficit
+        require(wad >= dust, "DomainGuest/dust");
+
+        dsin = _dsin + wad;
+
+        emit Deficit(wad);
     }
 
     /// @notice Merge DAI into surplus
     /// @param _lid Local ordering id
     /// @param wad The amount of DAI that has been sent to this domain [WAD]
     function _rectify(uint256 _lid, uint256 wad) internal ordered(_lid) {
+        dsin -= wad;
         vat.swell(address(this), _int256(wad * RAY));
 
         emit Rectify(wad);

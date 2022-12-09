@@ -41,9 +41,13 @@ contract EmptyDomainGuest is DomainGuest {
         (uint256 _rid, uint256 _burned) = _release();
         lastPayload = abi.encodeWithSelector(DomainHostLike.release.selector, _rid, _burned);
     }
-    function push() external {
-        (uint256 _rid, int256 _surplus) = _push();
-        lastPayload = abi.encodeWithSelector(DomainHostLike.push.selector, _rid, _surplus);
+    function surplus() external {
+        (uint256 _rid, uint256 _wad) = _surplus();
+        lastPayload = abi.encodeWithSelector(DomainHostLike.surplus.selector, _rid, _wad);
+    }
+    function deficit() external {
+        (uint256 _rid, uint256 _wad) = _deficit();
+        lastPayload = abi.encodeWithSelector(DomainHostLike.deficit.selector, _rid, _wad);
     }
     function rectify(uint256 _lid, uint256 wad) external hostOnly {
         _rectify(_lid, wad);
@@ -98,7 +102,8 @@ contract DomainGuestTest is DSSTest {
 
     event Lift(uint256 wad);
     event Release(uint256 burned);
-    event Push(int256 surplus);
+    event Surplus(uint256 wad);
+    event Deficit(uint256 wad);
     event Rectify(uint256 wad);
     event Cage();
     event Tell(uint256 value);
@@ -169,11 +174,12 @@ contract DomainGuestTest is DSSTest {
     function testLive() public {
         guest.cage(0);
 
-        bytes[] memory funcs = new bytes[](4);
+        bytes[] memory funcs = new bytes[](5);
         funcs[0] = abi.encodeWithSelector(EmptyDomainGuest.lift.selector, 1, 0, 0);
         funcs[1] = abi.encodeWithSelector(EmptyDomainGuest.release.selector, 0, 0, 0);
-        funcs[2] = abi.encodeWithSelector(EmptyDomainGuest.push.selector, 0, 0, 0);
-        funcs[3] = abi.encodeWithSelector(EmptyDomainGuest.cage.selector, 1, 0, 0);
+        funcs[2] = abi.encodeWithSelector(EmptyDomainGuest.surplus.selector, 0, 0, 0);
+        funcs[3] = abi.encodeWithSelector(EmptyDomainGuest.deficit.selector, 0, 0, 0);
+        funcs[4] = abi.encodeWithSelector(EmptyDomainGuest.cage.selector, 1, 0, 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
             assertRevert(address(guest), funcs[i], "DomainGuest/not-live");
@@ -265,7 +271,7 @@ contract DomainGuestTest is DSSTest {
     }
 
     function testReleaseDust() public {
-        guest.file("dust", 100 * RAD);
+        guest.file("dust", 100 ether);
 
         // Set debt ceiling to 100 DAI
         guest.lift(0, 100 * WAD);
@@ -287,7 +293,7 @@ contract DomainGuestTest is DSSTest {
     }
 
     function testPushSurplus() public {
-        guest.file("dust", 100 * RAD);
+        guest.file("dust", 100 ether);
         vat.suck(address(this), address(guest), 100 * RAD);
 
         assertEq(vat.dai(address(guest)), 100 * RAD);
@@ -296,14 +302,14 @@ contract DomainGuestTest is DSSTest {
 
         // Will push out a surplus of 100 DAI
         vm.expectEmit(true, true, true, true);
-        emit Push(int256(100 ether));
-        guest.push();
+        emit Surplus(100 ether);
+        guest.surplus();
 
         assertEq(vat.dai(address(guest)), 0);
         assertEq(vat.sin(address(guest)), 0);
         assertEq(vat.surf(), -int256(100 * RAD));
         assertEq(guest.rid(), 1);
-        assertEq(guest.lastPayload(), abi.encodeWithSelector(DomainHostLike.push.selector, 0, int256(100 ether)));
+        assertEq(guest.lastPayload(), abi.encodeWithSelector(DomainHostLike.surplus.selector, 0, 100 ether));
     }
 
     function testPushSurplusPartial() public {
@@ -316,17 +322,32 @@ contract DomainGuestTest is DSSTest {
         assertEq(vat.surf(), 0);
 
         // Will push out a surplus of 100 DAI (125 - 25)
-        guest.push();
+        guest.surplus();
 
+        assertEq(vat.dai(address(guest)), 25 * RAD);
+        assertEq(vat.sin(address(guest)), 25 * RAD);
+        guest.heal();
         assertEq(vat.dai(address(guest)), 0);
         assertEq(vat.sin(address(guest)), 0);
         assertEq(vat.surf(), -int256(100 * RAD));
         assertEq(guest.rid(), 1);
-        assertEq(guest.lastPayload(), abi.encodeWithSelector(DomainHostLike.push.selector, 0, int256(100 ether)));
+        assertEq(guest.lastPayload(), abi.encodeWithSelector(DomainHostLike.surplus.selector, 0, 100 ether));
+    }
+
+    function testPushSurplusNoneAvailable() public {
+        guest.file("dust", 100 ether);
+        vat.suck(address(this), address(guest), 100 * RAD);
+        vat.suck(address(guest), address(this), 101 * RAD);
+
+        assertEq(vat.dai(address(guest)), 100 * RAD);
+        assertEq(vat.sin(address(guest)), 101 * RAD);
+
+        vm.expectRevert("DomainGuest/non-surplus");
+        guest.surplus();
     }
 
     function testPushSurplusDust() public {
-        guest.file("dust", 101 * RAD);
+        guest.file("dust", 101 ether);
         vat.suck(address(this), address(guest), 100 * RAD);
 
         assertEq(vat.dai(address(guest)), 100 * RAD);
@@ -334,25 +355,51 @@ contract DomainGuestTest is DSSTest {
         assertEq(vat.surf(), 0);
 
         vm.expectRevert("DomainGuest/dust");
-        guest.push();
+        guest.surplus();
     }
 
     function testPushDeficit() public {
-        guest.file("dust", 100 * RAD);
+        guest.file("dust", 100 ether);
         vat.suck(address(guest), address(this), 100 * RAD);
 
         assertEq(vat.dai(address(guest)), 0);
         assertEq(vat.sin(address(guest)), 100 * RAD);
+        assertEq(guest.dsin(), 0);
 
         // Will push out a deficit of 100 DAI
         vm.expectEmit(true, true, true, true);
-        emit Push(-int256(100 ether));
-        guest.push();
+        emit Deficit(100 ether);
+        guest.deficit();
 
         assertEq(vat.dai(address(guest)), 0);
         assertEq(vat.sin(address(guest)), 100 * RAD);
+        assertEq(guest.dsin(), 100 ether);
         assertEq(guest.rid(), 1);
-        assertEq(guest.lastPayload(), abi.encodeWithSelector(DomainHostLike.push.selector, 0, -int256(100 ether)));
+        assertEq(guest.lastPayload(), abi.encodeWithSelector(DomainHostLike.deficit.selector, 0, 100 ether));
+
+        // Can't be executed again if there is not new deficit
+        vm.expectRevert("DomainGuest/non-deficit");
+        guest.deficit();
+
+        guest.file("dust", 0);
+        // Can't be executed again even if dust is zero
+        vm.expectRevert("DomainGuest/non-deficit");
+        guest.deficit();
+
+        guest.file("dust", 100 ether);
+
+        // More deficit is obtained now
+        vat.suck(address(guest), address(this), 200 * RAD);
+
+        vm.expectEmit(true, true, true, true);
+        emit Deficit(200 ether);
+        guest.deficit();
+
+        assertEq(vat.dai(address(guest)), 0);
+        assertEq(vat.sin(address(guest)), 300 * RAD);
+        assertEq(guest.dsin(), 300 ether);
+        assertEq(guest.rid(), 2);
+        assertEq(guest.lastPayload(), abi.encodeWithSelector(DomainHostLike.deficit.selector, 1, 200 ether));
     }
 
     function testPushDeficitPartial() public {
@@ -363,23 +410,70 @@ contract DomainGuestTest is DSSTest {
         assertEq(vat.sin(address(guest)), 125 * RAD);
 
         // Will push out a deficit of 25 DAI (125 - 100)
-        guest.push();
+        guest.deficit();
 
+        assertEq(vat.dai(address(guest)), 100 * RAD);
+        assertEq(vat.sin(address(guest)), 125 * RAD);
+        guest.heal();
         assertEq(vat.dai(address(guest)), 0);
         assertEq(vat.sin(address(guest)), 25 * RAD);
         assertEq(guest.rid(), 1);
-        assertEq(guest.lastPayload(), abi.encodeWithSelector(DomainHostLike.push.selector, 0, -int256(25 ether)));
+        assertEq(guest.lastPayload(), abi.encodeWithSelector(DomainHostLike.deficit.selector, 0, 25 ether));
+    }
+
+    function testPushDeficitNonExisting() public {
+        guest.file("dust", 100 ether);
+        vat.suck(address(this), address(guest), 101 * RAD);
+        vat.suck(address(guest), address(this), 100 * RAD);
+
+        assertEq(vat.dai(address(guest)), 101 * RAD);
+        assertEq(vat.sin(address(guest)), 100 * RAD);
+
+        vm.expectRevert("DomainGuest/non-deficit");
+        guest.deficit();
     }
 
     function testPushDeficitDust() public {
-        guest.file("dust", 101 * RAD);
+        assertEq(vat.dai(address(guest)), 0);
+        assertEq(vat.sin(address(guest)), 0);
+
+        vm.expectRevert("DomainGuest/non-deficit");
+        guest.deficit();
+
+        guest.file("dust", 101 ether);
         vat.suck(address(guest), address(this), 100 * RAD);
 
         assertEq(vat.dai(address(guest)), 0);
         assertEq(vat.sin(address(guest)), 100 * RAD);
 
         vm.expectRevert("DomainGuest/dust");
-        guest.push();
+        guest.deficit();
+    }
+
+    function testPushDeficitRecoveredAfterPushed() public {
+        guest.file("dust", 100 ether);
+        vat.suck(address(guest), address(this), 100 * RAD);
+
+        assertEq(vat.dai(address(guest)), 0);
+        assertEq(vat.sin(address(guest)), 100 * RAD);
+        assertEq(guest.dsin(), 0);
+
+        guest.deficit();
+
+        assertEq(guest.dsin(), 100 ether);
+
+        vat.suck(address(this), address(guest), 1 * RAD);
+
+        assertEq(vat.dai(address(guest)), 1 * RAD);
+        assertEq(vat.sin(address(guest)), 100 * RAD);
+
+        guest.heal();
+
+        assertEq(vat.dai(address(guest)), 0);
+        assertEq(vat.sin(address(guest)), 99 * RAD);
+
+        vm.expectRevert("DomainGuest/non-deficit-to-push");
+        guest.deficit();
     }
 
     function testRectify() public {
@@ -387,9 +481,18 @@ contract DomainGuestTest is DSSTest {
         assertEq(vat.surf(), 0);
         assertEq(guest.lid(), 0);
 
+        // We need to add "sin" to guest in order to call rectify
+        vm.store(
+            address(guest),
+            bytes32(uint256(7)),
+            bytes32(uint256(100 ether))
+        );
+        assertEq(guest.dsin(), 100 ether);
+
         vm.expectEmit(true, true, true, true);
         emit Rectify(100 ether);
         guest.rectify(0, 100 ether);
+        assertEq(guest.dsin(), 0);
 
         assertEq(vat.dai(address(guest)), 100 * RAD);
         assertEq(vat.surf(), int256(100 * RAD));

@@ -24,21 +24,17 @@ Permissionless function which will release ERC20 DAI in the host's escrow. It wi
 
 This will trigger a call to `DomainHost.release(uint256 _lid, uint256 wad)`.
 
-### `DomainGuest.push()`
+### `DomainGuest.surplus()`
 
-Permissionless function which will push a surplus (or deficit) to the host domain if the delta is greater than the dust limit.
+Permissionless function which will push a surplus to the host domain if the delta is greater than the dust limit. It will exit the DAI, send it across the token bridge and put it in the host's surplus buffer.
 
-#### Surplus
+This will trigger a call to `DomainHost.surplus(uint256 _lid, uint256 wad)` with `wad >= dust`.
 
-In the surplus case this will exit the DAI, send it across the token bridge and put it in the host's surplus buffer.
+### `DomainGuest.deficit()`
 
-This will trigger a call to `DomainHost.push(uint256 _lid, int256 wad)` with `wad >= dust`.
+Permissionless function which will push a deficit to the host domain if the delta is greater than the dust limit. It will send a message to the host's domain informing it that the guest is insolvent and needs more DAI. Due to the fact the guest could be compromised we need the Host to authorize the recapitalization operation with a call to `DomainHost.rectify()`.
 
-#### Deficit
-
-In the deficit case this will send a message to the host's domain informing it that the guest is insolvant and needs more DAI. Due to the fact the guest could be compromised we need the Host to authorize the recapitalization operation with a call to `DomainHost.rectify()`.
-
-This will trigger a call to `DomainHost.push(uint256 _lid, int256 wad)` with `wad <= -dust`.
+This will trigger a call to `DomainHost.deficit(uint256 _lid, uint256 wad)` with `wad >= dust`.
 
 ### `DomainHost.rectify()`
 

@@ -73,7 +73,7 @@ abstract contract DomainHost {
     uint256 public rid;         // Remote ordering id
     uint256 public line;        // Remote domain global debt ceiling [RAD]
     uint256 public grain;       // Keep track of the pre-minted DAI in the escrow [WAD]
-    uint256 public sin;         // A running total of how much is required to re-capitalize the remote domain [WAD]
+    uint256 public dsin;        // A running total of how much is required to re-capitalize the remote domain [WAD]
     uint256 public cure;        // The amount of unused debt [RAD]
     bool public cureReported;   // Returns true if cure has been reported by the guest
     uint256 public live;
@@ -95,7 +95,8 @@ abstract contract DomainHost {
     event File(bytes32 indexed what, address data);
     event Lift(uint256 wad);
     event Release(uint256 wad);
-    event Push(int256 wad);
+    event Surplus(uint256 wad);
+    event Deficit(uint256 wad);
     event Rectify(uint256 wad);
     event Cage();
     event Tell(uint256 value);
@@ -286,18 +287,23 @@ abstract contract DomainHost {
         emit Release(wad);
     }
 
-    /// @notice Guest is pushing a surplus (or deficit)
+    /// @notice Guest is pushing a surplus
     /// @param _lid Local ordering id
-    /// @param wad The amount of DAI to push (or pull) [WAD]
-    function _push(uint256 _lid, int256 wad) internal ordered(_lid) {
-        if (wad >= 0) {
-            dai.transferFrom(address(escrow), address(this), uint256(wad));
-            daiJoin.join(address(vow), uint256(wad));
-        } else {
-            sin += uint256(-wad);
-        }
+    /// @param wad The amount of DAI to send to the vow [WAD]
+    function _surplus(uint256 _lid, uint256 wad) internal ordered(_lid) {
+        dai.transferFrom(address(escrow), address(this), uint256(wad));
+        daiJoin.join(address(vow), uint256(wad));
 
-        emit Push(wad);
+        emit Surplus(wad);
+    }
+
+    /// @notice Guest is pushing a deficit
+    /// @param _lid Local ordering id
+    /// @param wad The amount of DAI to account as dsin [WAD]
+    function _deficit(uint256 _lid, uint256 wad) internal ordered(_lid) {
+        dsin += wad;
+
+        emit Deficit(wad);
     }
 
     /// @notice Move bad debt from the remote domain into the local vow
@@ -306,12 +312,12 @@ abstract contract DomainHost {
     function _rectify() internal auth returns (uint256 _rid, uint256 _wad) {
         require(vat.live() == 1, "DomainHost/vat-not-live");
 
-        _wad = sin;
+        _wad = dsin;
         require(_wad > 0, "DomainHost/no-sin");
         vat.suck(vow, address(this), _wad * RAY);
         daiJoin.exit(address(escrow), _wad);
-        sin = 0;
-        
+        dsin = 0;
+
         _rid = rid++;
 
         emit Rectify(_wad);

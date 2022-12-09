@@ -218,7 +218,8 @@ abstract contract IntegrationBaseTest is DSSTest {
     function hostInitializeRegisterMint(TeleportGUID memory teleport) internal virtual;
     function hostInitializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal virtual;
     function guestRelease() internal virtual;
-    function guestPush() internal virtual;
+    function guestSurplus() internal virtual;
+    function guestDeficit() internal virtual;
     function guestTell() internal virtual;
     function guestWithdraw(address to, uint256 amount) internal virtual;
     function guestInitializeRegisterMint(TeleportGUID memory teleport) internal virtual;
@@ -338,7 +339,10 @@ abstract contract IntegrationBaseTest is DSSTest {
         assertEq(rdss.vat.sin(address(guest)), 20 * RAD);
         assertEq(Vat(address(rdss.vat)).surf(), existingSurf);
 
-        guestPush();
+        guestSurplus();
+        assertEq(rdss.vat.dai(address(guest)), 20 * RAD);
+        assertEq(rdss.vat.sin(address(guest)), 20 * RAD);
+        guest.heal();
         assertEq(rdss.vat.dai(address(guest)), 0);
         assertEq(rdss.vat.sin(address(guest)), 0);
         assertEq(Vat(address(rdss.vat)).surf(), existingSurf - int256(30 * RAD));
@@ -368,10 +372,13 @@ abstract contract IntegrationBaseTest is DSSTest {
         assertEq(rdss.vat.sin(address(guest)), 50 * RAD);
         assertEq(Vat(address(rdss.vat)).surf(), existingSurf);
 
-        guestPush();
+        guestDeficit();
         guestDomain.relayToHost(true);
 
         guestDomain.selectFork();
+        assertEq(rdss.vat.dai(address(guest)), 20 * RAD);
+        assertEq(rdss.vat.sin(address(guest)), 50 * RAD);
+        guest.heal();
         assertEq(rdss.vat.dai(address(guest)), 0);
         assertEq(rdss.vat.sin(address(guest)), 30 * RAD);
         assertEq(Vat(address(rdss.vat)).surf(), existingSurf);

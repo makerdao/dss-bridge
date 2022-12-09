@@ -104,8 +104,12 @@ contract OptimismDomainHost is DomainHost {
         _release(_lid, wad);
     }
 
-    function push(uint256 _lid, int256 wad) external guestOnly {
-        _push(_lid, wad);
+    function surplus(uint256 _lid, uint256 wad) external guestOnly {
+        _surplus(_lid, wad);
+    }
+
+    function deficit(uint256 _lid, uint256 wad) external guestOnly {
+        _deficit(_lid, wad);
     }
 
     function rectify() external {

@@ -85,8 +85,12 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
         ArbitrumDomainGuest(address(guest)).release();
     }
 
-    function guestPush() internal virtual override {
-        ArbitrumDomainGuest(address(guest)).push();
+    function guestSurplus() internal virtual override {
+        ArbitrumDomainGuest(address(guest)).surplus();
+    }
+
+    function guestDeficit() internal virtual override {
+        ArbitrumDomainGuest(address(guest)).deficit();
     }
 
     function guestTell() internal virtual override {

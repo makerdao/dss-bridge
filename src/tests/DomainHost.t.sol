@@ -51,8 +51,11 @@ contract EmptyDomainHost is DomainHost {
     function release(uint256 _lid, uint256 wad) external guestOnly {
         _release(_lid, wad);
     }
-    function push(uint256 _lid, int256 wad) external guestOnly {
-        _push(_lid, wad);
+    function surplus(uint256 _lid, uint256 wad) external guestOnly {
+        _surplus(_lid, wad);
+    }
+    function deficit(uint256 _lid, uint256 wad) external guestOnly {
+        _deficit(_lid, wad);
     }
     function rectify() external {
         (uint256 _rid, uint256 _wad) = _rectify();
@@ -116,7 +119,8 @@ contract DomainHostTest is DSSTest {
 
     event Lift(uint256 wad);
     event Release(uint256 wad);
-    event Push(int256 wad);
+    event Surplus(uint256 wad);
+    event Deficit(uint256 wad);
     event Rectify(uint256 wad);
     event Cage();
     event Tell(uint256 value);
@@ -190,13 +194,14 @@ contract DomainHostTest is DSSTest {
     function testGuestOnly() public {
         host.setIsGuest(false);
 
-        bytes[] memory funcs = new bytes[](6);
+        bytes[] memory funcs = new bytes[](7);
         funcs[0] = abi.encodeWithSelector(EmptyDomainHost.release.selector, 0, 0, 0);
-        funcs[1] = abi.encodeWithSelector(EmptyDomainHost.push.selector, 0, 0, 0);
-        funcs[2] = abi.encodeWithSelector(EmptyDomainHost.tell.selector, 0, 0, 0);
-        funcs[3] = abi.encodeWithSelector(EmptyDomainHost.withdraw.selector, 0, 0, 0);
-        funcs[4] = abi.encodeWithSelector(EmptyDomainHost.finalizeRegisterMint.selector, 0, 0, 0, 0, 0, 0, 0);
-        funcs[5] = abi.encodeWithSelector(EmptyDomainHost.finalizeSettle.selector, 0, 0, 0);
+        funcs[1] = abi.encodeWithSelector(EmptyDomainHost.surplus.selector, 0, 0, 0);
+        funcs[2] = abi.encodeWithSelector(EmptyDomainHost.deficit.selector, 0, 0, 0);
+        funcs[3] = abi.encodeWithSelector(EmptyDomainHost.tell.selector, 0, 0, 0);
+        funcs[4] = abi.encodeWithSelector(EmptyDomainHost.withdraw.selector, 0, 0, 0);
+        funcs[5] = abi.encodeWithSelector(EmptyDomainHost.finalizeRegisterMint.selector, 0, 0, 0, 0, 0, 0, 0);
+        funcs[6] = abi.encodeWithSelector(EmptyDomainHost.finalizeSettle.selector, 0, 0, 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
             assertRevert(address(host), funcs[i], "DomainHost/not-guest");
@@ -217,10 +222,11 @@ contract DomainHostTest is DSSTest {
     }
 
     function testOrdered() public {
-        bytes[] memory funcs = new bytes[](3);
+        bytes[] memory funcs = new bytes[](4);
         funcs[0] = abi.encodeWithSelector(EmptyDomainHost.release.selector, 1, 0, 0);
-        funcs[1] = abi.encodeWithSelector(EmptyDomainHost.push.selector, 1, 0, 0);
-        funcs[2] = abi.encodeWithSelector(EmptyDomainHost.tell.selector, 1, 0, 0);
+        funcs[1] = abi.encodeWithSelector(EmptyDomainHost.surplus.selector, 1, 0, 0);
+        funcs[2] = abi.encodeWithSelector(EmptyDomainHost.deficit.selector, 1, 0, 0);
+        funcs[3] = abi.encodeWithSelector(EmptyDomainHost.tell.selector, 1, 0, 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
             assertRevert(address(host), funcs[i], "DomainHost/out-of-order");
@@ -382,35 +388,35 @@ contract DomainHostTest is DSSTest {
 
         assertEq(vat.dai(vow), 0);
         assertEq(dai.balanceOf(address(escrow)), 100 ether);
-        assertEq(host.sin(), 0);
+        assertEq(host.dsin(), 0);
         assertEq(host.lid(), 0);
 
         vm.expectEmit(true, true, true, true);
-        emit Push(int256(100 ether));
-        host.push(0, int256(100 ether));
+        emit Surplus(100 ether);
+        host.surplus(0, 100 ether);
 
         assertEq(vat.dai(vow), 100 * RAD);
         assertEq(dai.balanceOf(address(escrow)), 0);
-        assertEq(host.sin(), 0);
+        assertEq(host.dsin(), 0);
         assertEq(host.lid(), 1);
     }
 
     function testPushDeficit() public {
-        assertEq(host.sin(), 0);
+        assertEq(host.dsin(), 0);
 
         vm.expectEmit(true, true, true, true);
-        emit Push(-int256(100 ether));
-        host.push(0, -int256(100 ether));
+        emit Deficit(100 ether);
+        host.deficit(0, 100 ether);
 
-        assertEq(host.sin(), 100 ether);
+        assertEq(host.dsin(), 100 ether);
     }
 
     function testRectify() public {
-        host.push(0, -int256(100 ether));
+        host.deficit(0, 100 ether);
 
         assertEq(vat.sin(vow), 0);
         assertEq(dai.balanceOf(address(escrow)), 0);
-        assertEq(host.sin(), 100 ether);
+        assertEq(host.dsin(), 100 ether);
 
         vm.expectEmit(true, true, true, true);
         emit Rectify(100 ether);
