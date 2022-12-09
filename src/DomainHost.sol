@@ -306,16 +306,15 @@ abstract contract DomainHost {
     function _rectify() internal auth returns (uint256 _rid, uint256 _wad) {
         require(vat.live() == 1, "DomainHost/vat-not-live");
 
-        uint256 wad = sin;
-        require(wad > 0, "DomainHost/no-sin");
-        vat.suck(vow, address(this), wad * RAY);
-        daiJoin.exit(address(escrow), wad);
+        _wad = sin;
+        require(_wad > 0, "DomainHost/no-sin");
+        vat.suck(vow, address(this), _wad * RAY);
+        daiJoin.exit(address(escrow), _wad);
         sin = 0;
         
         _rid = rid++;
-        _wad = wad;
 
-        emit Rectify(wad);
+        emit Rectify(_wad);
     }
 
     /// @notice Initiate shutdown for this domain
@@ -422,13 +421,12 @@ abstract contract DomainHost {
         emit Settle(sourceDomain, targetDomain, amount);
     }
     function _initializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal returns (uint256 _amount) {
-        uint256 amount = settlements[sourceDomain][targetDomain];
-        require(amount > 0, "DomainHost/settlement-zero");
+        _amount = settlements[sourceDomain][targetDomain];
+        require(_amount > 0, "DomainHost/settlement-zero");
 
-        _amount = amount;
         settlements[sourceDomain][targetDomain] = 0;
 
-        emit InitializeSettle(sourceDomain, targetDomain, amount);
+        emit InitializeSettle(sourceDomain, targetDomain, _amount);
     }
     function _undoInitializeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) internal {
         settlements[sourceDomain][targetDomain] += amount;
