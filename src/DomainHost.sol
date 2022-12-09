@@ -299,7 +299,7 @@ abstract contract DomainHost {
 
     /// @notice Guest is pushing a deficit
     /// @param _lid Local ordering id
-    /// @param wad The amount of DAI to account as sin [WAD]
+    /// @param wad The amount of DAI to account as dsin [WAD]
     function _deficit(uint256 _lid, uint256 wad) internal ordered(_lid) {
         dsin += wad;
 
