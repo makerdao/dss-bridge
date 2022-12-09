@@ -346,13 +346,12 @@ abstract contract DomainGuest {
         emit Settle(sourceDomain, targetDomain, amount);
     }
     function _initializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal returns (uint256 _amount) {
-        uint256 amount = settlements[sourceDomain][targetDomain];
-        require(amount > 0, "DomainGuest/settlement-zero");
+        _amount = settlements[sourceDomain][targetDomain];
+        require(_amount > 0, "DomainGuest/settlement-zero");
 
-        _amount = amount;
         settlements[sourceDomain][targetDomain] = 0;
 
-        emit InitializeSettle(sourceDomain, targetDomain, amount);
+        emit InitializeSettle(sourceDomain, targetDomain, _amount);
     }
     function _finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) internal {
         vat.swell(address(this), _int256(amount * RAY));

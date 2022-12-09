@@ -422,13 +422,12 @@ abstract contract DomainHost {
         emit Settle(sourceDomain, targetDomain, amount);
     }
     function _initializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal returns (uint256 _amount) {
-        uint256 amount = settlements[sourceDomain][targetDomain];
-        require(amount > 0, "DomainHost/settlement-zero");
+        _amount = settlements[sourceDomain][targetDomain];
+        require(_amount > 0, "DomainHost/settlement-zero");
 
-        _amount = amount;
         settlements[sourceDomain][targetDomain] = 0;
 
-        emit InitializeSettle(sourceDomain, targetDomain, amount);
+        emit InitializeSettle(sourceDomain, targetDomain, _amount);
     }
     function _undoInitializeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) internal {
         settlements[sourceDomain][targetDomain] += amount;
