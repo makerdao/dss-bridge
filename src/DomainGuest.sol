@@ -78,9 +78,9 @@ abstract contract DomainGuest {
     uint256 public lid;         // Local ordering id
     uint256 public rid;         // Remote ordering id
     uint256 public grain;       // Keep track of the pre-minted DAI in the remote escrow [WAD]
-    uint256 public sin;         // A running total of how much was already requested to parent domain to re-capitalize this domain [WAD]
+    uint256 public sin;         // Amount already requested to parent domain to re-capitalize this one but hasn't yet been paid [WAD]
     uint256 public live;
-    uint256 public dust;        // The dust limit for preventing spam attacks [RAD]
+    uint256 public dust;        // The dust limit for preventing spam attacks [WAD]
 
     VatLike     public immutable vat;
     DaiJoinLike public immutable daiJoin;
@@ -225,7 +225,7 @@ abstract contract DomainGuest {
         require(live == 1, "DomainGuest/not-live");
 
         uint256 limit = _max(vat.Line() / RAY, _divup(vat.debt(), RAY));
-        require(grain >= limit + dust / RAY, "DomainGuest/dust");
+        require(grain >= limit + dust, "DomainGuest/dust");
         uint256 burned = grain - limit;
         grain = limit;
 
@@ -242,13 +242,15 @@ abstract contract DomainGuest {
 
         _rid = rid++;
 
-        uint256 _dai = vat.dai(address(this)) - vat.sin(address(this));
-        require(_dai >= dust, "DomainGuest/dust");
-
-        wad = _dai / RAY; // Round against this contract for surplus
+        uint256 _dai = vat.dai(address(this));
+        uint256 _sin = vat.sin(address(this));
+        require(_dai > _sin, "DomainGuest/non-surplus");
+        unchecked { wad = (_dai - _sin) / RAY; } // Round against this contract for surplus
+        require(wad >= dust, "DomainGuest/dust");
 
         // Burn the DAI and unload on the other side
         vat.swell(address(this), -_int256(wad * RAY));
+
         emit Surplus(wad);
     }
 
@@ -259,11 +261,13 @@ abstract contract DomainGuest {
 
         _rid = rid++;
 
+        uint256 _dai = vat.dai(address(this));
         uint256 sin_ = sin;
-        uint256 _sin = vat.sin(address(this)) - sin_ * RAY - vat.dai(address(this));
-        require(_sin >= dust, "DomainGuest/dust");
+        uint256 _sin = vat.sin(address(this)) - sin_ * RAY;
+        require(_sin > _dai, "DomainGuest/non-deficit");
+        unchecked { wad = _divup(_sin - _dai, RAY); } // Round up to overcharge for deficit
+        require(wad >= dust, "DomainGuest/dust");
 
-        wad = _divup(_sin, RAY); // Round up to overcharge for deficit
         sin = sin_ + wad;
 
         emit Deficit(wad);

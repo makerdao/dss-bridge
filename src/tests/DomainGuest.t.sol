@@ -271,7 +271,7 @@ contract DomainGuestTest is DSSTest {
     }
 
     function testReleaseDust() public {
-        guest.file("dust", 100 * RAD);
+        guest.file("dust", 100 ether);
 
         // Set debt ceiling to 100 DAI
         guest.lift(0, 100 * WAD);
@@ -293,7 +293,7 @@ contract DomainGuestTest is DSSTest {
     }
 
     function testPushSurplus() public {
-        guest.file("dust", 100 * RAD);
+        guest.file("dust", 100 ether);
         vat.suck(address(this), address(guest), 100 * RAD);
 
         assertEq(vat.dai(address(guest)), 100 * RAD);
@@ -335,19 +335,19 @@ contract DomainGuestTest is DSSTest {
     }
 
     function testPushSurplusNoneAvailable() public {
-        guest.file("dust", 100 * RAD);
+        guest.file("dust", 100 ether);
         vat.suck(address(this), address(guest), 100 * RAD);
         vat.suck(address(guest), address(this), 101 * RAD);
 
         assertEq(vat.dai(address(guest)), 100 * RAD);
         assertEq(vat.sin(address(guest)), 101 * RAD);
 
-        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
+        vm.expectRevert("DomainGuest/non-surplus");
         guest.surplus();
     }
 
     function testPushSurplusDust() public {
-        guest.file("dust", 101 * RAD);
+        guest.file("dust", 101 ether);
         vat.suck(address(this), address(guest), 100 * RAD);
 
         assertEq(vat.dai(address(guest)), 100 * RAD);
@@ -359,7 +359,7 @@ contract DomainGuestTest is DSSTest {
     }
 
     function testPushDeficit() public {
-        guest.file("dust", 100 * RAD);
+        guest.file("dust", 100 ether);
         vat.suck(address(guest), address(this), 100 * RAD);
 
         assertEq(vat.dai(address(guest)), 0);
@@ -378,8 +378,15 @@ contract DomainGuestTest is DSSTest {
         assertEq(guest.lastPayload(), abi.encodeWithSelector(DomainHostLike.deficit.selector, 0, 100 ether));
 
         // Can't be executed again if there is not new deficit
-        vm.expectRevert("DomainGuest/dust");
+        vm.expectRevert("DomainGuest/non-deficit");
         guest.deficit();
+
+        guest.file("dust", 0);
+        // Can't be executed again even if dust is zero
+        vm.expectRevert("DomainGuest/non-deficit");
+        guest.deficit();
+
+        guest.file("dust", 100 ether);
 
         // More deficit is obtained now
         vat.suck(address(guest), address(this), 200 * RAD);
@@ -415,19 +422,25 @@ contract DomainGuestTest is DSSTest {
     }
 
     function testPushDeficitNoneExisting() public {
-        guest.file("dust", 100 * RAD);
+        guest.file("dust", 100 ether);
         vat.suck(address(this), address(guest), 101 * RAD);
         vat.suck(address(guest), address(this), 100 * RAD);
 
         assertEq(vat.dai(address(guest)), 101 * RAD);
         assertEq(vat.sin(address(guest)), 100 * RAD);
 
-        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
+        vm.expectRevert("DomainGuest/non-deficit");
         guest.deficit();
     }
 
     function testPushDeficitDust() public {
-        guest.file("dust", 101 * RAD);
+        assertEq(vat.dai(address(guest)), 0);
+        assertEq(vat.sin(address(guest)), 0);
+
+        vm.expectRevert("DomainGuest/non-deficit");
+        guest.deficit();
+
+        guest.file("dust", 101 ether);
         vat.suck(address(guest), address(this), 100 * RAD);
 
         assertEq(vat.dai(address(guest)), 0);
