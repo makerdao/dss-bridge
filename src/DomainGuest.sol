@@ -224,15 +224,15 @@ abstract contract DomainGuest {
     function _release() internal returns (uint256 _rid, uint256 _burned) {
         require(live == 1, "DomainGuest/not-live");
 
-        uint256 limit = _max(vat.Line() / RAY, _divup(vat.debt(), RAY));
-        require(grain >= limit + dust, "DomainGuest/dust");
-        uint256 burned = grain - limit;
+        uint256 limit  = _max(vat.Line() / RAY, _divup(vat.debt(), RAY));
+        uint256 _grain = grain;
+        require(_grain >= limit + dust, "DomainGuest/dust");
+        _burned = _grain - limit;
         grain = limit;
 
         _rid = rid++;
-        _burned = burned;
 
-        emit Release(burned);
+        emit Release(_burned);
     }
 
     /// @notice Push surplus to the host dss
@@ -303,12 +303,11 @@ abstract contract DomainGuest {
         uint256 debt = end.debt();
         require(debt > 0 || (vat.debt() == 0 && live == 0), "DomainGuest/end-debt-zero");
         uint256 _grain = grain * RAY;
-        uint256 cure = _grain > debt ? _grain - debt : 0;
+        _cure = _grain > debt ? _grain - debt : 0;
 
         _rid = rid++;
-        _cure = cure;
 
-        emit Tell(cure);
+        emit Tell(_cure);
     }
 
     /// @notice Transfer a claim token for the given user
@@ -358,13 +357,12 @@ abstract contract DomainGuest {
         emit Settle(sourceDomain, targetDomain, amount);
     }
     function _initializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal returns (uint256 _amount) {
-        uint256 amount = settlements[sourceDomain][targetDomain];
-        require(amount > 0, "DomainGuest/settlement-zero");
+        _amount = settlements[sourceDomain][targetDomain];
+        require(_amount > 0, "DomainGuest/settlement-zero");
 
-        _amount = amount;
         settlements[sourceDomain][targetDomain] = 0;
 
-        emit InitializeSettle(sourceDomain, targetDomain, amount);
+        emit InitializeSettle(sourceDomain, targetDomain, _amount);
     }
     function _finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) internal {
         vat.swell(address(this), _int256(amount * RAY));
