@@ -32,9 +32,9 @@ This will trigger a call to `DomainHost.surplus(uint256 _lid, uint256 wad)` with
 
 ### `DomainGuest.deficit()`
 
-Permissionless function which will push a deficit to the host domain if the delta is greater than the dust limit. It will send a message to the host's domain informing it that the guest is insolvant and needs more DAI. Due to the fact the guest could be compromised we need the Host to authorize the recapitalization operation with a call to `DomainHost.rectify()`.
+Permissionless function which will push a deficit to the host domain if the delta is greater than the dust limit. It will send a message to the host's domain informing it that the guest is insolvent and needs more DAI. Due to the fact the guest could be compromised we need the Host to authorize the recapitalization operation with a call to `DomainHost.rectify()`.
 
-This will trigger a call to `DomainHost.deficit(uint256 _lid, uint256 wad)` with `wad <= -dust`.
+This will trigger a call to `DomainHost.deficit(uint256 _lid, uint256 wad)` with `wad >= dust`.
 
 ### `DomainHost.rectify()`
 
