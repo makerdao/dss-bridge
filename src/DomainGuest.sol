@@ -261,9 +261,12 @@ abstract contract DomainGuest {
 
         _rid = rid++;
 
-        uint256 _dai  = vat.dai(address(this));
-        uint256 _dsin = dsin;
-        uint256 _sin  = vat.sin(address(this)) - _dsin * RAY;
+        uint256 _dai   = vat.dai(address(this));
+        uint256 _sin   = vat.sin(address(this));
+        uint256 _dsin  = dsin;
+        uint256 _dSinR = _dsin * RAY;
+        require(_sin >= _dSinR, "DomainGuest/non-deficit-to-push");
+        unchecked { _sin = _sin - _dSinR; }
         require(_sin > _dai, "DomainGuest/non-deficit");
         unchecked { wad = _divup(_sin - _dai, RAY); } // Round up to overcharge for deficit
         require(wad >= dust, "DomainGuest/dust");

@@ -421,7 +421,7 @@ contract DomainGuestTest is DSSTest {
         assertEq(guest.lastPayload(), abi.encodeWithSelector(DomainHostLike.deficit.selector, 0, 25 ether));
     }
 
-    function testPushDeficitNoneExisting() public {
+    function testPushDeficitNonExisting() public {
         guest.file("dust", 100 ether);
         vat.suck(address(this), address(guest), 101 * RAD);
         vat.suck(address(guest), address(this), 100 * RAD);
@@ -447,6 +447,32 @@ contract DomainGuestTest is DSSTest {
         assertEq(vat.sin(address(guest)), 100 * RAD);
 
         vm.expectRevert("DomainGuest/dust");
+        guest.deficit();
+    }
+
+    function testPushDeficitRecoveredAfterPushed() public {
+        guest.file("dust", 100 ether);
+        vat.suck(address(guest), address(this), 100 * RAD);
+
+        assertEq(vat.dai(address(guest)), 0);
+        assertEq(vat.sin(address(guest)), 100 * RAD);
+        assertEq(guest.dsin(), 0);
+
+        guest.deficit();
+
+        assertEq(guest.dsin(), 100 ether);
+
+        vat.suck(address(this), address(guest), 1 * RAD);
+
+        assertEq(vat.dai(address(guest)), 1 * RAD);
+        assertEq(vat.sin(address(guest)), 100 * RAD);
+
+        guest.heal();
+
+        assertEq(vat.dai(address(guest)), 0);
+        assertEq(vat.sin(address(guest)), 99 * RAD);
+
+        vm.expectRevert("DomainGuest/non-deficit-to-push");
         guest.deficit();
     }
 
