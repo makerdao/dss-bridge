@@ -388,7 +388,7 @@ contract DomainHostTest is DSSTest {
 
         assertEq(vat.dai(vow), 0);
         assertEq(dai.balanceOf(address(escrow)), 100 ether);
-        assertEq(host.sin(), 0);
+        assertEq(host.dsin(), 0);
         assertEq(host.lid(), 0);
 
         vm.expectEmit(true, true, true, true);
@@ -397,18 +397,18 @@ contract DomainHostTest is DSSTest {
 
         assertEq(vat.dai(vow), 100 * RAD);
         assertEq(dai.balanceOf(address(escrow)), 0);
-        assertEq(host.sin(), 0);
+        assertEq(host.dsin(), 0);
         assertEq(host.lid(), 1);
     }
 
     function testPushDeficit() public {
-        assertEq(host.sin(), 0);
+        assertEq(host.dsin(), 0);
 
         vm.expectEmit(true, true, true, true);
         emit Deficit(100 ether);
         host.deficit(0, 100 ether);
 
-        assertEq(host.sin(), 100 ether);
+        assertEq(host.dsin(), 100 ether);
     }
 
     function testRectify() public {
@@ -416,7 +416,7 @@ contract DomainHostTest is DSSTest {
 
         assertEq(vat.sin(vow), 0);
         assertEq(dai.balanceOf(address(escrow)), 0);
-        assertEq(host.sin(), 100 ether);
+        assertEq(host.dsin(), 100 ether);
 
         vm.expectEmit(true, true, true, true);
         emit Rectify(100 ether);

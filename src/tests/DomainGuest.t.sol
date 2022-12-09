@@ -364,7 +364,7 @@ contract DomainGuestTest is DSSTest {
 
         assertEq(vat.dai(address(guest)), 0);
         assertEq(vat.sin(address(guest)), 100 * RAD);
-        assertEq(guest.sin(), 0);
+        assertEq(guest.dsin(), 0);
 
         // Will push out a deficit of 100 DAI
         vm.expectEmit(true, true, true, true);
@@ -373,7 +373,7 @@ contract DomainGuestTest is DSSTest {
 
         assertEq(vat.dai(address(guest)), 0);
         assertEq(vat.sin(address(guest)), 100 * RAD);
-        assertEq(guest.sin(), 100 ether);
+        assertEq(guest.dsin(), 100 ether);
         assertEq(guest.rid(), 1);
         assertEq(guest.lastPayload(), abi.encodeWithSelector(DomainHostLike.deficit.selector, 0, 100 ether));
 
@@ -397,7 +397,7 @@ contract DomainGuestTest is DSSTest {
 
         assertEq(vat.dai(address(guest)), 0);
         assertEq(vat.sin(address(guest)), 300 * RAD);
-        assertEq(guest.sin(), 300 ether);
+        assertEq(guest.dsin(), 300 ether);
         assertEq(guest.rid(), 2);
         assertEq(guest.lastPayload(), abi.encodeWithSelector(DomainHostLike.deficit.selector, 1, 200 ether));
     }
@@ -461,12 +461,12 @@ contract DomainGuestTest is DSSTest {
             bytes32(uint256(7)),
             bytes32(uint256(100 ether))
         );
-        assertEq(guest.sin(), 100 ether);
+        assertEq(guest.dsin(), 100 ether);
 
         vm.expectEmit(true, true, true, true);
         emit Rectify(100 ether);
         guest.rectify(0, 100 ether);
-        assertEq(guest.sin(), 0);
+        assertEq(guest.dsin(), 0);
 
         assertEq(vat.dai(address(guest)), 100 * RAD);
         assertEq(vat.surf(), int256(100 * RAD));

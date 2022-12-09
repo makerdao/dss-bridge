@@ -78,7 +78,7 @@ abstract contract DomainGuest {
     uint256 public lid;         // Local ordering id
     uint256 public rid;         // Remote ordering id
     uint256 public grain;       // Keep track of the pre-minted DAI in the remote escrow [WAD]
-    uint256 public sin;         // Amount already requested to parent domain to re-capitalize this one but hasn't yet been paid [WAD]
+    uint256 public dsin;        // Amount already requested to parent domain to re-capitalize this one but hasn't yet been paid [WAD]
     uint256 public live;
     uint256 public dust;        // The dust limit for preventing spam attacks [WAD]
 
@@ -261,14 +261,14 @@ abstract contract DomainGuest {
 
         _rid = rid++;
 
-        uint256 _dai = vat.dai(address(this));
-        uint256 sin_ = sin;
-        uint256 _sin = vat.sin(address(this)) - sin_ * RAY;
+        uint256 _dai  = vat.dai(address(this));
+        uint256 _dsin = dsin;
+        uint256 _sin  = vat.sin(address(this)) - _dsin * RAY;
         require(_sin > _dai, "DomainGuest/non-deficit");
         unchecked { wad = _divup(_sin - _dai, RAY); } // Round up to overcharge for deficit
         require(wad >= dust, "DomainGuest/dust");
 
-        sin = sin_ + wad;
+        dsin = _dsin + wad;
 
         emit Deficit(wad);
     }
@@ -277,7 +277,7 @@ abstract contract DomainGuest {
     /// @param _lid Local ordering id
     /// @param wad The amount of DAI that has been sent to this domain [WAD]
     function _rectify(uint256 _lid, uint256 wad) internal ordered(_lid) {
-        sin -= wad;
+        dsin -= wad;
         vat.swell(address(this), _int256(wad * RAY));
 
         emit Rectify(wad);

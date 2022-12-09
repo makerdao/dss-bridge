@@ -73,7 +73,7 @@ abstract contract DomainHost {
     uint256 public rid;         // Remote ordering id
     uint256 public line;        // Remote domain global debt ceiling [RAD]
     uint256 public grain;       // Keep track of the pre-minted DAI in the escrow [WAD]
-    uint256 public sin;         // A running total of how much is required to re-capitalize the remote domain [WAD]
+    uint256 public dsin;        // A running total of how much is required to re-capitalize the remote domain [WAD]
     uint256 public cure;        // The amount of unused debt [RAD]
     bool public cureReported;   // Returns true if cure has been reported by the guest
     uint256 public live;
@@ -301,7 +301,7 @@ abstract contract DomainHost {
     /// @param _lid Local ordering id
     /// @param wad The amount of DAI to account as sin [WAD]
     function _deficit(uint256 _lid, uint256 wad) internal ordered(_lid) {
-        sin += wad;
+        dsin += wad;
 
         emit Deficit(wad);
     }
@@ -312,11 +312,11 @@ abstract contract DomainHost {
     function _rectify() internal auth returns (uint256 _rid, uint256 _wad) {
         require(vat.live() == 1, "DomainHost/vat-not-live");
 
-        uint256 wad = sin;
+        uint256 wad = dsin;
         require(wad > 0, "DomainHost/no-sin");
         vat.suck(vow, address(this), wad * RAY);
         daiJoin.exit(address(escrow), wad);
-        sin = 0;
+        dsin = 0;
         
         _rid = rid++;
         _wad = wad;
