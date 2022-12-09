@@ -223,13 +223,12 @@ abstract contract DomainGuest {
 
         uint256 limit = _max(vat.Line() / RAY, _divup(vat.debt(), RAY));
         require(grain >= limit + dust / RAY, "DomainGuest/dust");
-        uint256 burned = grain - limit;
+        _burned = grain - limit;
         grain = limit;
 
         _rid = rid++;
-        _burned = burned;
 
-        emit Release(burned);
+        emit Release(_burned);
     }
 
     /// @notice Push surplus (or deficit) to the host dss
@@ -291,12 +290,11 @@ abstract contract DomainGuest {
         uint256 debt = end.debt();
         require(debt > 0 || (vat.debt() == 0 && live == 0), "DomainGuest/end-debt-zero");
         uint256 _grain = grain * RAY;
-        uint256 cure = _grain > debt ? _grain - debt : 0;
+        _cure = _grain > debt ? _grain - debt : 0;
 
         _rid = rid++;
-        _cure = cure;
 
-        emit Tell(cure);
+        emit Tell(_cure);
     }
 
     /// @notice Transfer a claim token for the given user
