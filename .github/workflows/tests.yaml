@@ -1,0 +1,23 @@
+on: [push, pull_request]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install Dependencies
+        run: forge install
+
+      - name: Run tests
+        run: make test
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
+          OPT_RPC_URL: ${{ secrets.OPT_RPC_URL }}
+          ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
+          ARB_NOVA_RPC_URL: ${{ secrets.ARB_NOVA_RPC_URL }}
