@@ -104,8 +104,8 @@ contract OptimismDomainHost is DomainHost {
         _release(_lid, wad);
     }
 
-    function surplus(uint256 _lid, uint256 wad) external guestOnly {
-        _surplus(_lid, wad);
+    function surplus(uint256 _lid, uint256 wad, uint256 debt) external guestOnly {
+        _surplus(_lid, wad, debt);
     }
 
     function deficit(uint256 _lid, uint256 wad) external guestOnly {
@@ -136,8 +136,8 @@ contract OptimismDomainHost is DomainHost {
         );
     }
 
-    function tell(uint256 _lid, uint256 value) external guestOnly {
-        _tell(_lid, value);
+    function tell(uint256 _lid, uint256 debt) external guestOnly {
+        _tell(_lid, debt);
     }
 
     function exit(address usr, uint256 wad) external {

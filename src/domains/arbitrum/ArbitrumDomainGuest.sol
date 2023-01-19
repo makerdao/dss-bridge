@@ -77,10 +77,10 @@ contract ArbitrumDomainGuest is DomainGuest {
     }
 
     function surplus() external {
-        (uint256 _rid, uint256 _wad) = _surplus();
+        (uint256 _rid, uint256 _wad, uint256 _debt) = _surplus();
         arbSys.sendTxToL1(
             host,
-            abi.encodeWithSelector(DomainHostLike.surplus.selector, _rid, _wad)
+            abi.encodeWithSelector(DomainHostLike.surplus.selector, _rid, _wad, _debt)
         );
     }
 
@@ -101,10 +101,10 @@ contract ArbitrumDomainGuest is DomainGuest {
     }
 
     function tell() external {
-        (uint256 _rid, uint256 _cure) = _tell();
+        (uint256 _rid, uint256 _debt) = _tell();
         arbSys.sendTxToL1(
             host,
-            abi.encodeWithSelector(DomainHostLike.tell.selector, _rid, _cure)
+            abi.encodeWithSelector(DomainHostLike.tell.selector, _rid, _debt)
         );
     }
 

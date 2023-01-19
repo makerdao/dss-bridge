@@ -73,9 +73,9 @@ abstract contract DomainHost {
     uint256 public rid;         // Remote ordering id
     uint256 public line;        // Remote domain global debt ceiling [RAD]
     uint256 public grain;       // Keep track of the pre-minted DAI in the escrow [WAD]
+    uint256 public ddai;        // A running total of how much is ready for realize as surplus [WAD]
     uint256 public dsin;        // A running total of how much is required to re-capitalize the remote domain [WAD]
-    uint256 public cure;        // The amount of unused debt [RAD]
-    bool public cureReported;   // Returns true if cure has been reported by the guest
+    bool public debtReported;   // Returns true if debt has been reported by the guest
     uint256 public live;
 
     bytes32     public immutable ilk;
@@ -95,8 +95,9 @@ abstract contract DomainHost {
     event File(bytes32 indexed what, address data);
     event Lift(uint256 wad);
     event Release(uint256 wad);
-    event Surplus(uint256 wad);
+    event Surplus(uint256 wad, uint256 debt);
     event Deficit(uint256 wad);
+    event Accrue(uint256 wad);
     event Rectify(uint256 wad);
     event Cage();
     event Tell(uint256 value);
@@ -289,12 +290,11 @@ abstract contract DomainHost {
 
     /// @notice Guest is pushing a surplus
     /// @param _lid Local ordering id
-    /// @param wad The amount of DAI to send to the vow [WAD]
-    function _surplus(uint256 _lid, uint256 wad) internal ordered(_lid) {
-        dai.transferFrom(address(escrow), address(this), uint256(wad));
-        daiJoin.join(address(vow), uint256(wad));
+    /// @param wad The amount of DAI to account as ddai [WAD]
+    function _surplus(uint256 _lid, uint256 wad, uint256 debt) internal ordered(_lid) {
+        ddai += wad;
 
-        emit Surplus(wad);
+        emit Surplus(wad, debt);
     }
 
     /// @notice Guest is pushing a deficit
@@ -306,17 +306,45 @@ abstract contract DomainHost {
         emit Deficit(wad);
     }
 
+    /// @notice Governance is accruing surplus
+    /// @param debt The amount of debt in the guest domain that should be backed by pre-minted DAI [WAD]
+    function accrue(uint256 debt) external auth returns (uint256 _wad) {
+        require(vat.live() == 1, "DomainHost/vat-not-live");
+        uint256 _dsin = dsin;
+        uint256 _ddai = ddai;
+        require(_ddai > _dsin, "DomainHost/no-surplus");
+
+        unchecked { _wad = _ddai - _dsin; }
+        dai.transferFrom(address(escrow), address(this), _wad);
+        daiJoin.join(address(vow), _wad);
+
+        int256 diff = _int256(debt) - _int256(grain);
+        if (diff > 0) {
+            vat.slip(ilk, address(this), diff);
+            vat.frob(ilk, address(this), address(this), address(this), diff, diff);
+            daiJoin.exit(escrow, uint256(diff));
+            grain = debt;
+        }
+        dsin = 0;
+        ddai = 0;
+
+        emit Accrue(_wad);
+    }
+
     /// @notice Move bad debt from the remote domain into the local vow
     /// @dev This is a potentially dangerous operation as a malicious domain can drain the entire surplus buffer
     /// Because of this we require an authed party to perform this operation
     function _rectify() internal auth returns (uint256 _rid, uint256 _wad) {
         require(vat.live() == 1, "DomainHost/vat-not-live");
+        uint256 _dsin = dsin;
+        uint256 _ddai = ddai;
+        require(_dsin > _ddai, "DomainHost/no-deficit");
 
-        _wad = dsin;
-        require(_wad > 0, "DomainHost/no-sin");
+        unchecked { _wad = _dsin - _ddai; }
         vat.suck(vow, address(this), _wad * RAY);
         daiJoin.exit(address(escrow), _wad);
         dsin = 0;
+        ddai = 0;
 
         _rid = rid++;
 
@@ -336,18 +364,27 @@ abstract contract DomainHost {
         emit Cage();
     }
 
-    /// @notice Set this domain's cure value
+    /// @notice Process this domain debt
     /// @param _lid Local ordering id
-    /// @param value The value of the cure [RAD]
-    function _tell(uint256 _lid, uint256 value) internal ordered(_lid) {
+    /// @param debt The value of debt [WAD]
+    function _tell(uint256 _lid, uint256 debt) internal ordered(_lid) {
         require(live == 0, "DomainHost/live");
-        require(!cureReported, "DomainHost/cure-reported");
-        require(_divup(value, RAY) <= grain, "DomainHost/cure-bad-value");
+        require(!debtReported, "DomainHost/debt-reported");
 
-        cureReported = true;
-        cure = value;
+        int256 gap = _int256(grain) - _int256(debt);
 
-        emit Tell(value);
+        if (gap > 0) {
+            dai.transferFrom(address(escrow), address(this), uint256(gap));
+            daiJoin.join(address(vow), uint256(gap));
+        } else if (gap < 0) {
+            vat.suck(vow, address(this), uint256(-gap) * RAY);
+            daiJoin.exit(address(escrow), uint256(-gap));
+        }
+        // grain = debt;
+
+        debtReported = true;
+
+        emit Tell(debt);
     }
 
     /// @notice Allow DAI holders to exit during global settlement

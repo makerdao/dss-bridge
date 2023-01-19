@@ -10,7 +10,6 @@ import { Domain } from "dss-test/domains/Domain.sol";
 import { RootDomain } from "dss-test/domains/RootDomain.sol";
 import { BridgedDomain } from "dss-test/domains/BridgedDomain.sol";
 import { ClaimToken } from "xdomain-dss/ClaimToken.sol";
-import { Cure } from "xdomain-dss/Cure.sol";
 import { Dai } from "xdomain-dss/Dai.sol";
 import { DaiJoin } from "xdomain-dss/DaiJoin.sol";
 import { End } from "xdomain-dss/End.sol";
@@ -322,15 +321,17 @@ abstract contract IntegrationBaseTest is DSSTest {
     }
 
     function testPushSurplus() public {
-        uint256 escrowDai = dss.dai.balanceOf(escrow);
         uint256 vowDai = dss.vat.dai(address(dss.vow));
         uint256 vowSin = dss.vat.sin(address(dss.vow));
         guestDomain.selectFork();
         int256 existingSurf = Vat(address(rdss.vat)).surf();
         hostDomain.selectFork();
 
+        assertEq(host.ddai(), 0);
+
         // Set global DC and add 50 DAI surplus + 20 DAI debt to vow
         hostLift(100 ether);
+        uint256 escrowDai = dss.dai.balanceOf(escrow);
         guestDomain.relayFromHost(true);
         rdss.vat.suck(address(123), address(guest), 50 * RAD);
         rdss.vat.suck(address(guest), address(123), 20 * RAD);
@@ -348,9 +349,17 @@ abstract contract IntegrationBaseTest is DSSTest {
         assertEq(Vat(address(rdss.vat)).surf(), existingSurf - int256(30 * RAD));
         guestDomain.relayToHost(true);
 
+        assertEq(dss.vat.dai(address(dss.vow)), vowDai);
+        assertEq(dss.vat.sin(address(dss.vow)), vowSin);
+        assertEq(dss.dai.balanceOf(escrow), escrowDai);
+
+        assertEq(host.ddai(), 30 ether);
+
+        host.accrue(0);
+
         assertEq(dss.vat.dai(address(dss.vow)), vowDai + 30 * RAD);
         assertEq(dss.vat.sin(address(dss.vow)), vowSin);
-        assertEq(dss.dai.balanceOf(escrow), escrowDai + 70 ether);
+        assertEq(dss.dai.balanceOf(escrow), escrowDai - 30 ether);
     }
 
     function testPushDeficit() public {
@@ -424,6 +433,7 @@ abstract contract IntegrationBaseTest is DSSTest {
         host.deny(address(this));       // Confirm cage can be done permissionlessly
         hostCage();
 
+        uint256 initialVatDai = dss.vat.dai(address(dss.vow));
         assertEq(dss.vat.live(), 0);
         assertEq(host.live(), 0);
         guestDomain.relayFromHost(true);
@@ -451,10 +461,10 @@ abstract contract IntegrationBaseTest is DSSTest {
 
         rdss.end.thaw();
         guestTell();
-        assertEq(guest.grain(), 100 ether);
         rdss.end.flow(GUEST_COLL_ILK);
         guestDomain.relayToHost(true);
-        assertEq(host.cure(), 60 * RAD);    // 60 pre-mint dai is unused
+
+        assertEq(dss.vat.dai(address(dss.vow)), initialVatDai + 60 * RAD); // 60 pre-mint dai is unused and returned as surplus
 
         // --- Settle out the Host instance ---
 
@@ -487,10 +497,9 @@ abstract contract IntegrationBaseTest is DSSTest {
         
         // Check debt is deducted properly
         uint256 debt = dss.vat.debt();
-        dss.cure.load(address(host));
         dss.end.thaw();
 
-        assertEq(dss.end.debt(), debt - 60 * RAD);
+        assertEq(dss.end.debt(), debt);
 
         dss.end.flow(ilk);
 
@@ -625,5 +634,4 @@ abstract contract IntegrationBaseTest is DSSTest {
         guestDomain.relayToHost(true);
         assertEq(dss.vat.dai(address(teleport.join)), 50 * RAD);
     }
-
 }

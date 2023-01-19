@@ -51,8 +51,8 @@ contract EmptyDomainHost is DomainHost {
     function release(uint256 _lid, uint256 wad) external guestOnly {
         _release(_lid, wad);
     }
-    function surplus(uint256 _lid, uint256 wad) external guestOnly {
-        _surplus(_lid, wad);
+    function surplus(uint256 _lid, uint256 wad, uint256 debt) external guestOnly {
+        _surplus(_lid, wad, debt);
     }
     function deficit(uint256 _lid, uint256 wad) external guestOnly {
         _deficit(_lid, wad);
@@ -119,8 +119,9 @@ contract DomainHostTest is DSSTest {
 
     event Lift(uint256 wad);
     event Release(uint256 wad);
-    event Surplus(uint256 wad);
+    event Surplus(uint256 wad, uint256 debt);
     event Deficit(uint256 wad);
+    event Accrue(uint256 debt);
     event Rectify(uint256 wad);
     event Cage();
     event Tell(uint256 value);
@@ -389,16 +390,25 @@ contract DomainHostTest is DSSTest {
         assertEq(vat.dai(vow), 0);
         assertEq(dai.balanceOf(address(escrow)), 100 ether);
         assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 0);
         assertEq(host.lid(), 0);
 
         vm.expectEmit(true, true, true, true);
-        emit Surplus(100 ether);
-        host.surplus(0, 100 ether);
+        emit Surplus(100 ether, 0);
+        host.surplus(0, 100 ether, 0);
 
+        assertEq(vat.dai(vow), 0);
+        assertEq(dai.balanceOf(address(escrow)), 100 ether);
+        assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 100 ether);
+        assertEq(host.lid(), 1);
+
+        emit Accrue(100 ether);
+        host.accrue(0);
         assertEq(vat.dai(vow), 100 * RAD);
         assertEq(dai.balanceOf(address(escrow)), 0);
         assertEq(host.dsin(), 0);
-        assertEq(host.lid(), 1);
+        assertEq(host.ddai(), 0);
     }
 
     function testPushDeficit() public {
@@ -428,7 +438,7 @@ contract DomainHostTest is DSSTest {
     }
 
     function testRectifyNoSin() public {
-        vm.expectRevert("DomainHost/no-sin");
+        vm.expectRevert("DomainHost/no-deficit");
         host.rectify();
     }
 
@@ -470,39 +480,33 @@ contract DomainHostTest is DSSTest {
         host.lift(100 ether);
         host.cage();
 
-        assertEq(host.cure(), 0);
-        assertTrue(!host.cureReported());
+        uint256 initialVatDai = vat.dai(vow);
+        uint256 initialHostGrain = host.grain();
+        assertTrue(!host.debtReported());
 
         vm.expectEmit(true, true, true, true);
-        emit Tell(100 * RAD);
-        host.tell(0, 100 * RAD);
+        emit Tell(100 ether);
+        host.tell(0, 100 ether);
 
-        assertEq(host.cure(), 100 * RAD);
-        assertTrue(host.cureReported());
+        assertEq(vat.dai(vow), initialVatDai + 100 * RAD - initialHostGrain * RAY);
+        assertEq(host.grain(), 100 ether);
+        assertTrue(host.debtReported());
     }
 
     function testTellNotCaged() public {
         host.lift(100 ether);
 
         vm.expectRevert("DomainHost/live");
-        host.tell(0, 100 * RAD);
-    }
-
-    function testTellCureBadValue() public {
-        host.lift(50 ether);
-        host.cage();
-
-        vm.expectRevert("DomainHost/cure-bad-value");
-        host.tell(0, 100 * RAD);
+        host.tell(0, 100 ether);
     }
 
     function testTellTwice() public {
         host.lift(100 ether);
         host.cage();
-        host.tell(0, 100 * RAD);
+        host.tell(0, 100 ether);
 
-        vm.expectRevert("DomainHost/cure-reported");
-        host.tell(1, 50 * RAD);
+        vm.expectRevert("DomainHost/debt-reported");
+        host.tell(1, 50 ether);
     }
 
     function testExit() public {

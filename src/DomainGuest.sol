@@ -24,7 +24,7 @@ import "./TeleportGUID.sol";
 interface DomainHostLike {
     function withdraw(address to, uint256 amount) external;
     function release(uint256 _lid, uint256 wad) external;
-    function surplus(uint256 _lid, uint256 wad) external;
+    function surplus(uint256 _lid, uint256 wad, uint256 debt) external;
     function deficit(uint256 _lid, uint256 wad) external;
     function tell(uint256 _lid, uint256 value) external;
     function finalizeRegisterMint(TeleportGUID calldata teleport) external;
@@ -99,7 +99,7 @@ abstract contract DomainGuest {
     event File(bytes32 indexed what, uint256 data);
     event Lift(uint256 wad);
     event Release(uint256 burned);
-    event Surplus(uint256 wad);
+    event Surplus(uint256 wad, uint256 debt);
     event Deficit(uint256 wad);
     event Rectify(uint256 wad);
     event Cage();
@@ -237,7 +237,7 @@ abstract contract DomainGuest {
 
     /// @notice Push surplus to the host dss
     /// @dev Should be run by keeper on a regular schedule
-    function _surplus() internal returns (uint256 _rid, uint256 wad) {
+    function _surplus() internal returns (uint256 _rid, uint256 wad, uint256 debt) {
         require(live == 1, "DomainGuest/not-live");
 
         _rid = rid++;
@@ -248,10 +248,12 @@ abstract contract DomainGuest {
         unchecked { wad = (_dai - _sin) / RAY; } // Round against this contract for surplus
         require(wad >= dust, "DomainGuest/dust");
 
+        debt = _divup(vat.debt(), RAY);
+
         // Burn the DAI and unload on the other side
         vat.swell(address(this), -_int256(wad * RAY));
 
-        emit Surplus(wad);
+        emit Surplus(wad, debt);
     }
 
     /// @notice Push deficit to the host dss
@@ -299,15 +301,13 @@ abstract contract DomainGuest {
 
     /// @notice Set the cure value for the host
     /// @dev Triggered during shutdown
-    function _tell() internal returns (uint256 _rid, uint256 _cure) {
-        uint256 debt = end.debt();
+    function _tell() internal returns (uint256 _rid, uint256 debt) {
+        debt = _divup(end.debt(), RAY);
         require(debt > 0 || (vat.debt() == 0 && live == 0), "DomainGuest/end-debt-zero");
-        uint256 _grain = grain * RAY;
-        _cure = _grain > debt ? _grain - debt : 0;
 
         _rid = rid++;
 
-        emit Tell(_cure);
+        emit Tell(debt);
     }
 
     /// @notice Transfer a claim token for the given user
