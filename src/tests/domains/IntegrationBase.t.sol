@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.15;
 
-import "dss-test/DSSTest.sol";
+import "dss-test/DssTest.sol";
 import { MCD, DssInstance } from "dss-test/MCD.sol";
 
 import { DaiAbstract, EndAbstract } from "dss-interfaces/Interfaces.sol";
@@ -43,7 +43,7 @@ contract DogMock {
     }
 }
 
-abstract contract IntegrationBaseTest is DSSTest {
+abstract contract IntegrationBaseTest is DssTest {
 
     using GodMode for *;
     using MCD for DssInstance;
@@ -76,22 +76,20 @@ abstract contract IntegrationBaseTest is DSSTest {
 
     event FinalizeRegisterMint(TeleportGUID teleport);
 
-    function setupEnv() internal virtual override {
-        config = readInput("config");
-
-        hostDomain = new RootDomain(config, "root");
-        hostDomain.selectFork();
-        hostDomain.loadDssFromChainlog();
-        dss = hostDomain.dss(); // For ease of access
-    }
-
     function setupGuestDomain() internal virtual returns (BridgedDomain);
     function deployHost(address guestAddr) internal virtual returns (BridgeInstance memory);
     function deployGuest(DssInstance memory dss, address hostAddr) internal virtual returns (BridgeInstance memory);
     function initHost() internal virtual;
     function initGuest() internal virtual;
 
-    function postSetup() internal virtual override {
+    function setUp() public {
+        config = readInput("config");
+
+        hostDomain = new RootDomain(config, getRelativeChain("mainnet"));
+        hostDomain.selectFork();
+        hostDomain.loadDssFromChainlog();
+        dss = hostDomain.dss(); // For ease of access
+
         guestDomain = setupGuestDomain();
 
         domain = hostDomain.readConfigBytes32FromString("domain");

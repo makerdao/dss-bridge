@@ -2,18 +2,18 @@
 
 pragma solidity ^0.8.15;
 
-import "dss-test/DSSTest.sol";
+import "dss-test/DssTest.sol";
 
 import { Escrow } from "../Escrow.sol";
 import { DaiMock } from "./mocks/DaiMock.sol";
 
-contract EscrowTest is DSSTest {
+contract EscrowTest is DssTest {
     Escrow escrow;
     DaiMock dai;
 
     event Approve(address indexed token, address indexed spender, uint256 value);
 
-    function postSetup() internal virtual override {
+    function setUp() public {
         escrow = new Escrow();
         dai = new DaiMock();
     }

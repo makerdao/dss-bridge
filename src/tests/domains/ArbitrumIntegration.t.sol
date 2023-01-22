@@ -114,7 +114,7 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
 contract ArbitrumOneIntegrationTest is ArbitrumIntegrationTest {
 
     function setupGuestDomain() internal virtual override returns (BridgedDomain) {
-        return new ArbitrumDomain(config, "arbitrum-one", hostDomain);
+        return new ArbitrumDomain(config, getRelativeChain("arbitrum_one"), hostDomain);
     }
 
 }
@@ -122,7 +122,7 @@ contract ArbitrumOneIntegrationTest is ArbitrumIntegrationTest {
 contract ArbitrumNovaIntegrationTest is ArbitrumIntegrationTest {
 
     function setupGuestDomain() internal virtual override returns (BridgedDomain) {
-        return new ArbitrumDomain(config, "arbitrum-nova", hostDomain);
+        return new ArbitrumDomain(config, getRelativeChain("arbitrum_nova"), hostDomain);
     }
 
 }
