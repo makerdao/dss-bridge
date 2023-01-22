@@ -59,13 +59,13 @@ contract StarknetDomainHost is DomainHost {
     // l1->l2 selectors
     //  from starkware.starknet.compiler.compile import get_selector_from_name
     //  print(get_selector_from_name('deposit'))
-    uint256 constant DEPOSIT                  = 1; // TODO
-    uint256 constant LIFT                     = 2; // TODO
-    uint256 constant RECTIFY                  = 3; // TODO
-    uint256 constant CAGE                     = 4; // TODO
-    uint256 constant EXIT                     = 5; // TODO
-    uint256 constant INITIALIZE_REGISTER_MINT = 6; // TODO
-    uint256 constant INITIALIZE_SETTLE        = 7; // TODO
+    uint256 constant DEPOSIT                  = 0x02d757788a8d8d6f21d1cd40bce38a8222d70654214e96ff95d8086e684fbee5;
+    uint256 constant LIFT                     = 0x0097e0a7daa178262ccab0934871ccb7f1824e8e243b70a261b31b63a933c0d8;
+    uint256 constant RECTIFY                  = 0x0011fce77b0d18edec88dd4ea11a79954603e9f58dfdea7cfa0a1e878f9ed123; 
+    uint256 constant CAGE                     = 0x03a8fb615613782c5344a82b21562217b97c5751ed70241335cdf35f5df787db;
+    uint256 constant EXIT                     = 0x01b94138ef066f7e697538e2b11b58ba2828c21f5a7b8c84d976f91a2bf9ea2e;
+    uint256 constant INITIALIZE_REGISTER_MINT = 0x02fca9ac2f009914738bae235270207cf40bca1bcfd0857f7491e12be45a2b16;
+    uint256 constant INITIALIZE_SETTLE        = 0x03fa39ec7e437e57cf90a50f74f2e0069a791c8804f01f513746510dce80eac1;
 
     // l2->l1 selectors
     uint256 constant WITHDRAW        = 1;
