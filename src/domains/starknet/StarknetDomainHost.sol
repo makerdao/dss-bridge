@@ -70,10 +70,11 @@ contract StarknetDomainHost is DomainHost {
     // l2->l1 selectors
     uint256 constant WITHDRAW        = 1;
     uint256 constant RELEASE         = 2;
-    uint256 constant PUSH            = 3;
-    uint256 constant TELL            = 4;
-    uint256 constant REGISTER_MINT   = 5;
-    uint256 constant FINALIZE_SETTLE = 6;
+    uint256 constant SURPLUS         = 3;
+    uint256 constant DEFICIT         = 4;
+    uint256 constant TELL            = 5;
+    uint256 constant REGISTER_MINT   = 6;
+    uint256 constant FINALIZE_SETTLE = 7;
 
     // data
     StarknetLike public immutable starknet;
@@ -298,14 +299,26 @@ contract StarknetDomainHost is DomainHost {
         starknet.consumeMessageFromL2(guest, payload);
     }
 
-    function push(uint256 _lid, int256 wad) external {
+    function surplus(uint256 _lid, uint256 wad) external {
 
-        _push(_lid, wad);
+        _surplus(_lid, wad);
 
         uint256[] memory payload = new uint256[](5);
-        payload[0] = PUSH;
+        payload[0] = SURPLUS;
         (payload[1], payload[2]) = split(_lid);
-        (payload[3], payload[4]) = split(uint256(wad));
+        (payload[3], payload[4]) = split(wad);
+
+        starknet.consumeMessageFromL2(guest, payload);
+    }
+
+    function deficit(uint256 _lid, uint256 wad) external {
+
+        _deficit(_lid, wad);
+
+        uint256[] memory payload = new uint256[](5);
+        payload[0] = DEFICIT;
+        (payload[1], payload[2]) = split(_lid);
+        (payload[3], payload[4]) = split(wad);
 
         starknet.consumeMessageFromL2(guest, payload);
     }
