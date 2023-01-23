@@ -371,16 +371,12 @@ abstract contract DomainHost {
         require(live == 0, "DomainHost/live");
         require(!debtReported, "DomainHost/debt-reported");
 
-        int256 gap = _int256(grain) - _int256(debt);
-
-        if (gap > 0) {
-            dai.transferFrom(address(escrow), address(this), uint256(gap));
-            daiJoin.join(address(vow), uint256(gap));
-        } else if (gap < 0) {
-            vat.suck(vow, address(this), uint256(-gap) * RAY);
-            daiJoin.exit(address(escrow), uint256(-gap));
+        uint256 _grain = grain;
+        if (_grain > debt) {
+            uint256 gap = _grain - debt;
+            dai.transferFrom(address(escrow), address(this), gap);
+            daiJoin.join(address(vow), gap);
         }
-        // grain = debt;
 
         debtReported = true;
 
