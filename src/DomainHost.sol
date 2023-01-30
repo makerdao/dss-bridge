@@ -373,9 +373,9 @@ abstract contract DomainHost {
 
         uint256 _grain = grain;
         if (_grain > debt) {
-            uint256 gap = _grain - debt;
-            dai.transferFrom(address(escrow), address(this), gap);
-            daiJoin.join(address(vow), gap);
+            uint256 wad = _grain - debt + ddai;
+            dai.transferFrom(address(escrow), address(this), wad);
+            daiJoin.join(address(vow), wad);
         }
 
         debtReported = true;
