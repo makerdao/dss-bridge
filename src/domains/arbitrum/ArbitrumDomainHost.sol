@@ -159,12 +159,8 @@ contract ArbitrumDomainHost is DomainHost {
         );
     }
 
-    function release(uint256 _lid, uint256 wad) external guestOnly {
-        _release(_lid, wad);
-    }
-
-    function surplus(uint256 _lid, uint256 wad, uint256 debt) external guestOnly {
-        _surplus(_lid, wad, debt);
+    function surplus(uint256 _lid, uint256 wad) external guestOnly {
+        _surplus(_lid, wad);
     }
 
     function deficit(uint256 _lid, uint256 wad) external guestOnly {
@@ -238,7 +234,7 @@ contract ArbitrumDomainHost is DomainHost {
         uint256 maxGas,
         uint256 gasPriceBid
     ) public payable {
-        _exit(usr, wad);
+        bytes memory data = abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, _exit(usr, wad)); // Needed to inline _exit(usr, wad) here because of stack too deep
         inbox.createRetryableTicket{value: msg.value}(
             guest,
             0, // we always assume that l2CallValue = 0
@@ -247,7 +243,7 @@ contract ArbitrumDomainHost is DomainHost {
             msg.sender,
             maxGas,
             gasPriceBid,
-            abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, wad)
+            data
         );
     }
     function exit(

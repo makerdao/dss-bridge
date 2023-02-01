@@ -23,8 +23,7 @@ import "./TeleportGUID.sol";
 
 interface DomainHostLike {
     function withdraw(address to, uint256 amount) external;
-    function release(uint256 _lid, uint256 wad) external;
-    function surplus(uint256 _lid, uint256 wad, uint256 debt) external;
+    function surplus(uint256 _lid, uint256 wad) external;
     function deficit(uint256 _lid, uint256 wad) external;
     function tell(uint256 _lid, uint256 value) external;
     function finalizeRegisterMint(TeleportGUID calldata teleport) external;
@@ -77,7 +76,6 @@ abstract contract DomainGuest {
     EndLike public end;
     uint256 public lid;         // Local ordering id
     uint256 public rid;         // Remote ordering id
-    uint256 public grain;       // Keep track of the pre-minted DAI in the remote escrow [WAD]
     uint256 public dsin;        // Amount already requested to parent domain to re-capitalize this one but hasn't yet been paid [WAD]
     uint256 public live;
     uint256 public dust;        // The dust limit for preventing spam attacks [WAD]
@@ -98,8 +96,7 @@ abstract contract DomainGuest {
     event File(bytes32 indexed what, address data);
     event File(bytes32 indexed what, uint256 data);
     event Lift(uint256 wad);
-    event Release(uint256 burned);
-    event Surplus(uint256 wad, uint256 debt);
+    event Surplus(uint256 wad);
     event Deficit(uint256 wad);
     event Rectify(uint256 wad);
     event Cage();
@@ -205,39 +202,20 @@ abstract contract DomainGuest {
 
     // --- MCD Support ---
 
-    /// @notice Record changes in line and grain and update dss global debt ceiling if necessary
+    /// @notice Record changes in Line
     /// @param _lid Local ordering id
     /// @param wad The new debt ceiling [WAD]
     function _lift(uint256 _lid, uint256 wad) internal ordered(_lid) {
         require(live == 1, "DomainGuest/not-live");
 
-        uint256 lastLine = vat.Line();
-        uint256 rad = wad * RAY;
-        if (rad > lastLine) grain = wad;
-        vat.file("Line", rad);
+        vat.file("Line", wad * RAY);
 
         emit Lift(wad);
     }
 
-    /// @notice Will release remote DAI from the escrow when it is safe to do so
-    /// @dev    Should be run by keeper on a regular schedule.
-    function _release() internal returns (uint256 _rid, uint256 _burned) {
-        require(live == 1, "DomainGuest/not-live");
-
-        uint256 limit  = _max(vat.Line() / RAY, _divup(vat.debt(), RAY));
-        uint256 _grain = grain;
-        require(_grain >= limit + dust, "DomainGuest/dust");
-        _burned = _grain - limit;
-        grain = limit;
-
-        _rid = rid++;
-
-        emit Release(_burned);
-    }
-
     /// @notice Push surplus to the host dss
     /// @dev Should be run by keeper on a regular schedule
-    function _surplus() internal returns (uint256 _rid, uint256 wad, uint256 debt) {
+    function _surplus() internal returns (uint256 _rid, uint256 wad) {
         require(live == 1, "DomainGuest/not-live");
 
         _rid = rid++;
@@ -248,12 +226,10 @@ abstract contract DomainGuest {
         unchecked { wad = (_dai - _sin) / RAY; } // Round against this contract for surplus
         require(wad >= dust, "DomainGuest/dust");
 
-        debt = _divup(vat.debt(), RAY);
-
         // Burn the DAI and unload on the other side
         vat.swell(address(this), -_int256(wad * RAY));
 
-        emit Surplus(wad, debt);
+        emit Surplus(wad);
     }
 
     /// @notice Push deficit to the host dss
@@ -302,7 +278,7 @@ abstract contract DomainGuest {
     /// @notice Set the cure value for the host
     /// @dev Triggered during shutdown
     function _tell() internal returns (uint256 _rid, uint256 debt) {
-        debt = _divup(end.debt(), RAY);
+        debt = end.debt();
         require(debt > 0 || (vat.debt() == 0 && live == 0), "DomainGuest/end-debt-zero");
 
         _rid = rid++;
@@ -313,15 +289,11 @@ abstract contract DomainGuest {
     /// @notice Transfer a claim token for the given user
     /// @dev    This will transfer a scaled claim from the end.
     /// @param usr The destination to send the claim tokens to
-    /// @param wad The amount of claim tokens to mint
-    function _exit(address usr, uint256 wad) internal {
-        // Convert to actual debt amount
-        // Round against the user
-        uint256 claimAmount = wad * (end.debt() / grain);
+    /// @param rad The amount of claim tokens to mint
+    function _exit(address usr, uint256 rad) internal {
+        claimToken.transferFrom(address(end), usr, rad);
 
-        claimToken.transferFrom(address(end), usr, claimAmount);
-
-        emit Exit(usr, wad);
+        emit Exit(usr, rad);
     }
 
     function heal(uint256 amount) external {

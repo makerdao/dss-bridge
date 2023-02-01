@@ -100,12 +100,8 @@ contract OptimismDomainHost is DomainHost {
         );
     }
 
-    function release(uint256 _lid, uint256 wad) external guestOnly {
-        _release(_lid, wad);
-    }
-
-    function surplus(uint256 _lid, uint256 wad, uint256 debt) external guestOnly {
-        _surplus(_lid, wad, debt);
+    function surplus(uint256 _lid, uint256 wad) external guestOnly {
+        _surplus(_lid, wad);
     }
 
     function deficit(uint256 _lid, uint256 wad) external guestOnly {
@@ -144,10 +140,10 @@ contract OptimismDomainHost is DomainHost {
         exit(usr, wad, glExit);
     }
     function exit(address usr, uint256 wad, uint32 gasLimit) public {
-        _exit(usr, wad);
+        (uint256 claim) = _exit(usr, wad);
         l1messenger.sendMessage(
             guest,
-            abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, wad),
+            abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, claim),
             gasLimit
         );
     }

@@ -93,10 +93,6 @@ contract OptimismIntegrationTest is IntegrationBaseTest {
         OptimismDomainGuest(address(host)).initializeSettle(sourceDomain, targetDomain);
     }
 
-    function guestRelease() internal virtual override {
-        OptimismDomainGuest(address(guest)).release();
-    }
-
     function guestSurplus() internal virtual override {
         OptimismDomainGuest(address(guest)).surplus();
     }

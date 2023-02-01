@@ -10,6 +10,18 @@ We assume any messaging bridge will guarantee messages will be executed exactly 
 
 ## Supported Operations
 
+### `DomainHost.deposit(address to, uint256 amount)`
+
+Standard deposit mechanism. Locks local DAI and mints canonical DAI on the guest domain.
+
+This will trigger a call to `DomainGuest.deposit(address to, uint256 amount)`.
+
+### `DomainGuest.withdraw(address to, uint256 amount)`
+
+Standard withdrawal mechanism. Burns local canonical DAI and unlocks the escrowed DAI on the host domain.
+
+This will trigger a call to `DomainHost.withdraw(address to, uint256 amount)`.
+
 ### `DomainHost.lift(uint256 wad)`
 
 Specify a new global debt ceiling for the remote domain. If the amount is an increase this will pre-mint ERC20 and stick it in the domain escrow, so the future minted DAI on the remote domain is backed. It will not remove escrow DAI upon lowering as that can potentially lead to unbacked DAI. Releasing pre-minted DAI from the escrow needs to be handled by the remote domain.
@@ -18,15 +30,9 @@ This will back the pre-minted DAI by `vat.gems` that represent shares to the rem
 
 This will trigger a call to `DomainGuest.lift(uint256 _lid, uint256 wad)`.
 
-### `DomainGuest.release()`
-
-Permissionless function which will release ERC20 DAI in the host's escrow. It will only do this if the amount of pre-minted DAI is greater than both the current `vat.debt()` and `vat.Line()` plus a dust limit. IE we previously lowered the global debt ceiling and if these DAI are not in use (active debt) then it is released on the host domain.
-
-This will trigger a call to `DomainHost.release(uint256 _lid, uint256 wad)`.
-
 ### `DomainGuest.surplus()`
 
-Permissionless function which will push a surplus to the host domain if the delta is greater than the dust limit. It will exit the DAI, send it across the token bridge and put it in the host's surplus buffer.
+Permissionless function which will push a surplus to the host domain if the delta is greater than the dust limit. It will exit the DAI, send it across the token bridge leaving it ready for being realized by governance.
 
 This will trigger a call to `DomainHost.surplus(uint256 _lid, uint256 wad)` with `wad >= dust`.
 
@@ -35,6 +41,10 @@ This will trigger a call to `DomainHost.surplus(uint256 _lid, uint256 wad)` with
 Permissionless function which will push a deficit to the host domain if the delta is greater than the dust limit. It will send a message to the host's domain informing it that the guest is insolvent and needs more DAI. Due to the fact the guest could be compromised we need the Host to authorize the recapitalization operation with a call to `DomainHost.rectify()`.
 
 This will trigger a call to `DomainHost.deficit(uint256 _lid, uint256 wad)` with `wad >= dust`.
+
+### `DomainHost.accrue(uint256 _grain)`
+
+Authed function which will effectively move the accounted surplus to the buffer. It will generate new pre minted DAI if necessary to cover remote's debt (it is up to governance to pass the correct value).
 
 ### `DomainHost.rectify()`
 
@@ -58,15 +68,7 @@ This will trigger a call to `DomainHost.tell(uint256 _lid, uint256 value)`.
 
 Used during global settlement to provide DAI holders with a share claim on the remote collateral. Mints a claim token on the remote domain which can be used in the remote `end` to get access to the collateral.
 
-This will trigger a call to `DomainGuest.exit(address usr, uint256 wad)`.
-
-### `DomainHost.deposit(address to, uint256 amount)`
-
-Standard deposit mechanism. Locks local DAI and mints canonical DAI on the guest domain.
-
-### `DomainGuest.withdraw(address to, uint256 amount)`
-
-Standard withdrawal mechanism. Burns local canonical DAI and unlocks the escrowed DAI on the host domain.
+This will trigger a call to `DomainGuest.exit(address usr, uint256 claim)`. Where `claim` equals to `wad * debt / grain`.
 
 ### Teleport Functions
 

@@ -216,7 +216,6 @@ abstract contract IntegrationBaseTest is DSSTest {
     function hostDeposit(address to, uint256 amount) internal virtual;
     function hostInitializeRegisterMint(TeleportGUID memory teleport) internal virtual;
     function hostInitializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal virtual;
-    function guestRelease() internal virtual;
     function guestSurplus() internal virtual;
     function guestDeficit() internal virtual;
     function guestTell() internal virtual;
@@ -267,7 +266,6 @@ abstract contract IntegrationBaseTest is DSSTest {
         guestDomain.relayFromHost(true);
         assertEq(rdss.vat.Line(), 100 * RAD);
         assertEq(rdss.vat.debt(), 0);
-        assertEq(guest.grain(), 100 * WAD);
 
         // Pre-mint DAI is not released here
         hostDomain.selectFork();
@@ -283,15 +281,10 @@ abstract contract IntegrationBaseTest is DSSTest {
         guestDomain.relayFromHost(true);
         assertEq(rdss.vat.Line(), 50 * RAD);
         assertEq(rdss.vat.debt(), 0);
-        assertEq(guest.grain(), 100 * WAD);
 
-        // Notify the host that the DAI is safe to remove
-        guestRelease();
+        hostDomain.selectFork();
+        host.release(50 ether);
 
-        assertEq(rdss.vat.Line(), 50 * RAD);
-        assertEq(rdss.vat.debt(), 0);
-
-        guestDomain.relayToHost(true);
         (ink, art) = dss.vat.urns(ilk, address(host));
         assertEq(ink, 50 ether);
         assertEq(art, 50 ether);
@@ -309,15 +302,8 @@ abstract contract IntegrationBaseTest is DSSTest {
         hostDomain.selectFork();
         hostLift(25 ether);
         guestDomain.relayFromHost(true);
-        guestRelease();
-        guestDomain.relayToHost(true);
-
-        (ink, art) = dss.vat.urns(ilk, address(host));
-        assertEq(ink, 40 ether);
-        assertEq(art, 40 ether);
-        assertEq(host.grain(), 40 ether);
-        assertEq(host.line(), 25 * RAD);
-        assertEq(dss.dai.balanceOf(escrow), escrowDai + 40 ether);
+        assertEq(rdss.vat.Line(), 25 * RAD);
+        assertEq(rdss.vat.debt(), 40 * RAD);
     }
 
     function testPushSurplus() public {
