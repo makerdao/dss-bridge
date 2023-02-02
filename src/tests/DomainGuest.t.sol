@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.15;
 
-import "dss-test/DSSTest.sol";
+import "dss-test/DssTest.sol";
 
 import { DaiJoinMock } from "./mocks/DaiJoinMock.sol";
 import { DaiMock } from "./mocks/DaiMock.sol";
@@ -82,7 +82,7 @@ contract ClaimTokenMock {
     }
 }
 
-contract DomainGuestTest is DSSTest {
+contract DomainGuestTest is DssTest {
 
     VatMock vat;
     DaiJoinMock daiJoin;
@@ -112,13 +112,7 @@ contract DomainGuestTest is DSSTest {
     event InitializeSettle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
     event FinalizeSettle(bytes32 indexed sourceDomain, bytes32 indexed targetDomain, uint256 amount);
 
-    function _divup(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        unchecked {
-            z = x != 0 ? ((x - 1) / y) + 1 : 0;
-        }
-    }
-
-    function postSetup() internal virtual override {
+    function setUp() public {
         vat = new VatMock();
         dai = new DaiMock();
         daiJoin = new DaiJoinMock(address(vat), address(dai));

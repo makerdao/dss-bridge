@@ -12,7 +12,7 @@ import { OptimismDomainGuest } from "../../domains/optimism/OptimismDomainGuest.
 contract OptimismIntegrationTest is IntegrationBaseTest {
 
     function setupGuestDomain() internal virtual override returns (BridgedDomain) {
-        return new OptimismDomain(config, "optimism", hostDomain);
+        return new OptimismDomain(config, getRelativeChain("optimism"), hostDomain);
     }
 
     function deployHost(address guestAddr) internal virtual override returns (BridgeInstance memory) {
