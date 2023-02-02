@@ -83,7 +83,7 @@ abstract contract IntegrationBaseTest is DssTest {
     function initGuest() internal virtual;
 
     function setUp() public {
-        config = readInput("config");
+        config = ScriptTools.readInput("config");
 
         hostDomain = new RootDomain(config, getRelativeChain("mainnet"));
         hostDomain.selectFork();
