@@ -1,6 +1,6 @@
 {
     "domains": {
-        "root": {
+        "mainnet": {
             "type": "root",
             "rpc": "ETH_RPC_URL",
             "chainlog": "0xdA0Ab1e0017DEbCd72Be8599041a2aa3bA7e740F",
@@ -23,7 +23,7 @@
             "escrow": "0x467194771dAe2967Aef3ECbEDD3Bf9a310C76C65",
             "dai": "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
         },
-        "arbitrum-one": {
+        "arbitrum_one": {
             "type": "arbitrum",
             "rpc": "ARB_RPC_URL",
             "inbox": "0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f",
@@ -36,7 +36,7 @@
             "escrow": "0xA10c7CE4b876998858b1a9E12b10092229539400",
             "dai": "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
         },
-        "arbitrum-nova": {
+        "arbitrum_nova": {
             "type": "arbitrum",
             "rpc": "ARB_NOVA_RPC_URL",
             "inbox": "0xc4448b71118c9071Bcb9734A0EAc55D18A153949",

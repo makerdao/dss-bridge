@@ -9,7 +9,7 @@ remappings = [
 ]
 fs_permissions = [
     { access = "read", path = "./script/input/"},
-    { access = "read", path = "./out/ArbitrumDomain.sol/ArbSysOverride.json"}
+    { access = "read", path = "./out/"}
 ]
 
 # See more config options https://github.com/gakonst/foundry/tree/master/config
