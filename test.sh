@@ -18,7 +18,7 @@ set -e
 
 export FOUNDRY_ROOT_CHAINID
 if [[ -z "$1" ]]; then
-  forge test --rpc-url="$ETH_RPC_URL" --use solc:0.8.15
+  forge test --use solc:0.8.15
 else
-  forge test --rpc-url="$ETH_RPC_URL" --match "$1" -vvvv --use solc:0.8.15
+  forge test --match "$1" -vvvv --use solc:0.8.15
 fi
