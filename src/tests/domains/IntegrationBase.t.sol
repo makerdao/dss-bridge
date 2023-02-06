@@ -618,4 +618,372 @@ abstract contract IntegrationBaseTest is DssTest {
         guestDomain.relayToHost(true);
         assertEq(dss.vat.dai(address(teleport.join)), 50 * RAD);
     }
+
+    function _setInitialCaseState() internal returns (uint256 existingVatDebt, uint256 existingEscrowDai, int256 existingSurf) {
+        // No dai or sin for vow (to simply asserts)
+        vm.store(
+            address(dss.vat),
+            bytes32(uint256(keccak256(abi.encode(address(dss.vow), uint256(5))))),
+            bytes32(uint256(0))
+        );
+        vm.store(
+            address(dss.vat),
+            bytes32(uint256(keccak256(abi.encode(address(dss.vow), uint256(6))))),
+            bytes32(uint256(0))
+        );
+        assertEq(dss.vat.dai(address(dss.vow)), 0);
+        assertEq(dss.vat.sin(address(dss.vow)), 0);
+        //
+
+        existingVatDebt = dss.vat.debt();
+        existingEscrowDai = dss.dai.balanceOf(address(escrow));
+        hostDomain.selectFork();
+        assertEq(host.grain(), 0);
+
+        guestDomain.selectFork();
+        assertEq(rdss.vat.Line(), 0);
+        existingSurf = Vat(address(rdss.vat)).surf();
+        assertEq(rdss.vat.debt(), 0);
+        assertEq(Vat(address(rdss.vat)).ink(GUEST_COLL_ILK, address(this)), 0);
+        assertEq(Vat(address(rdss.vat)).art(GUEST_COLL_ILK, address(this)), 0);
+
+        hostDomain.selectFork();
+        dss.dai.mint(address(this), 20 ether);
+        dss.dai.approve(address(host), 20 ether);
+        hostDeposit(address(this), 20 ether);
+        assertEq(dss.dai.balanceOf(address(escrow)), existingEscrowDai + 20 ether);
+        guestDomain.relayFromHost(true);
+
+        assertEq(Vat(address(rdss.vat)).surf(), existingSurf + int256(20 * RAD));
+
+        hostDomain.selectFork();
+        hostLift(100 ether);
+        assertEq(dss.vat.debt(), existingVatDebt + 100 * RAD);
+        assertEq(dss.dai.balanceOf(address(escrow)), existingEscrowDai + 120 ether);
+
+        guestDomain.relayFromHost(true);
+        assertEq(rdss.vat.Line(), 100 * RAD);
+
+        rdss.initIlk(GUEST_COLL_ILK);
+        rdss.vat.file(GUEST_COLL_ILK, "line", 100 * RAD);
+        rdss.vat.slip(GUEST_COLL_ILK, address(this), 1000 ether);
+        rdss.vat.frob(GUEST_COLL_ILK, address(this), address(this), address(this), 1000 ether, 95 ether);
+        assertEq(Vat(address(rdss.vat)).ink(GUEST_COLL_ILK, address(this)), 1000 ether);
+        assertEq(Vat(address(rdss.vat)).art(GUEST_COLL_ILK, address(this)) * Vat(address(rdss.vat)).rate(GUEST_COLL_ILK), 95 * RAD);
+        assertEq(rdss.vat.debt(), 95 * RAD);
+    }
+
+    function _checkFinalState(
+        uint256 grain,
+        uint256 l1Vatdebt,
+        uint256 l1EscrowDai,
+        uint256 l2EndDebt,
+        uint256 l2EndFix,
+        int256  l2Supply
+    ) internal {
+        uint256 activeFork = vm.activeFork();
+
+        hostDomain.selectFork();
+        dss.vow.heal(dss.vat.dai(address(dss.vow)));
+        assertEq(dss.vat.debt(), l1Vatdebt, "Error final L1 debt");
+        assertEq(dss.dai.balanceOf(address(escrow)), l1EscrowDai, "Error final L1 escrow dai");
+        assertEq(host.grain(), grain, "Error final L1 grain");
+        assertEq(dss.vat.gem(host.ilk(), address(dss.end)), grain, "Error final L1 end gem");
+
+        guestDomain.selectFork();
+        assertEq(rdss.end.debt(), l2EndDebt, "Error final L2 end debt");
+        assertEq(rdss.end.fix(GUEST_COLL_ILK), l2EndFix, "Error final L2 end fix");
+        assertEq(int256(rdss.vat.debt()) + Vat(address(rdss.vat)).surf() - int256(rdss.vat.dai(address(guest))), l2Supply, "Error final L2 supply");
+
+        vm.selectFork(activeFork);
+    }
+
+    function testCaseNonSurplusOrDeficit() public {
+        (uint256 existingVatDebt, uint256 existingEscrowDai, int256 existingSurf) = _setInitialCaseState();
+
+        hostDomain.selectFork();
+        dss.end.cage();
+        dss.end.cage(host.ilk());
+        dss.end.skim(host.ilk(), address(host));
+
+        hostCage();
+        guestDomain.relayFromHost(true);
+
+        rdss.end.cage(GUEST_COLL_ILK);
+        rdss.end.skim(GUEST_COLL_ILK, address(this));
+        vm.warp(block.timestamp + rdss.end.wait());
+        rdss.end.thaw();
+        rdss.end.flow(GUEST_COLL_ILK);
+
+        guestTell();
+        guestDomain.relayToHost(true);
+
+        _checkFinalState(
+            /*grain:*/          100 ether,
+            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
+            /*l1EscrowDai:*/    existingEscrowDai + 115 ether,
+            /*l2EndDebt:*/      95 * RAD,
+            /*l2EndFix:*/       1 * RAY,
+            /*l2Supply:*/       existingSurf + int256(115 * RAD)
+        );
+    }
+
+    function testCaseSurplusAccounted() public {
+        (uint256 existingVatDebt, uint256 existingEscrowDai, int256 existingSurf) = _setInitialCaseState();
+
+        // Simulate fees were generated and collected in the local surplus buffer
+        rdss.vat.fold(GUEST_COLL_ILK, address(guest), int256(0.03 * 10**27));
+        assertEq(Vat(address(rdss.vat)).art(GUEST_COLL_ILK, address(this)) * Vat(address(rdss.vat)).rate(GUEST_COLL_ILK), 97.85 * 10**45);
+        assertEq(rdss.vat.debt(), 97.85 * 10**45);
+        assertEq(rdss.vat.dai(address(guest)), 2.85 * 10**45);
+        //
+
+        guestSurplus();
+        assertEq(rdss.vat.dai(address(guest)), 0);
+        assertEq(Vat(address(rdss.vat)).surf(), existingSurf + int256(17.15 * 10**45));
+
+        guestDomain.relayToHost(true);
+        assertEq(host.ddai(), 2.85 ether);
+
+        host.accrue(97.85 ether);
+
+        assertEq(dss.vat.dai(address(dss.vow)), 2.85 * 10**45);
+        assertEq(dss.dai.balanceOf(address(escrow)), existingEscrowDai + 117.15 ether);
+
+        dss.end.cage();
+        dss.end.cage(host.ilk());
+        dss.end.skim(host.ilk(), address(host));
+
+        hostCage();
+        guestDomain.relayFromHost(true);
+
+        rdss.end.cage(GUEST_COLL_ILK);
+        rdss.end.skim(GUEST_COLL_ILK, address(this));
+        vm.warp(block.timestamp + rdss.end.wait());
+        rdss.end.thaw();
+        rdss.end.flow(GUEST_COLL_ILK);
+
+        guestTell();
+        guestDomain.relayToHost(true);
+
+        _checkFinalState(
+            /*grain:*/          100 ether,
+            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
+            /*l1EscrowDai:*/    existingEscrowDai + 115 ether,
+            /*l2EndDebt:*/      97.85 * 10**45,
+            /*l2EndFix:*/       1 * RAY,
+            /*l2Supply:*/       existingSurf + int256(115 * RAD)
+        );
+    }
+
+    function testCaseSurplusNotAccounted() public {
+        (uint256 existingVatDebt, uint256 existingEscrowDai, int256 existingSurf) = _setInitialCaseState();
+
+        // Simulate fees were generated and collected in the local surplus buffer
+        rdss.vat.fold(GUEST_COLL_ILK, address(guest), int256(0.03 * 10**27));
+        assertEq(Vat(address(rdss.vat)).art(GUEST_COLL_ILK, address(this)) * Vat(address(rdss.vat)).rate(GUEST_COLL_ILK), 97.85 * 10**45);
+        assertEq(rdss.vat.debt(), 97.85 * 10**45);
+        assertEq(rdss.vat.dai(address(guest)), 2.85 * 10**45);
+        //
+
+        hostDomain.selectFork();
+        dss.end.cage();
+        dss.end.cage(host.ilk());
+        dss.end.skim(host.ilk(), address(host));
+
+        hostCage();
+        guestDomain.relayFromHost(true);
+
+        rdss.end.cage(GUEST_COLL_ILK);
+        rdss.end.skim(GUEST_COLL_ILK, address(this));
+        guest.heal();
+        vm.warp(block.timestamp + rdss.end.wait());
+        rdss.end.thaw();
+        rdss.end.flow(GUEST_COLL_ILK);
+
+        guestTell();
+        guestDomain.relayToHost(true);
+
+        _checkFinalState(
+            /*grain:*/          100 ether,
+            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
+            /*l1EscrowDai:*/    existingEscrowDai + 115 ether,
+            /*l2EndDebt:*/      95 * RAD,
+            /*l2EndFix:*/       1.03 * 10**27,
+            /*l2Supply:*/       existingSurf + int256(115 * RAD)
+        );
+    }
+
+    function testCaseSurplusAccountedButNotAcrrued() public {
+        (uint256 existingVatDebt, uint256 existingEscrowDai, int256 existingSurf) = _setInitialCaseState();
+
+        // Simulate fees were generated and collected in the local surplus buffer
+        rdss.vat.fold(GUEST_COLL_ILK, address(guest), int256(0.03 * 10**27));
+        assertEq(Vat(address(rdss.vat)).art(GUEST_COLL_ILK, address(this)) * Vat(address(rdss.vat)).rate(GUEST_COLL_ILK), 97.85 * 10**45);
+        assertEq(rdss.vat.debt(), 97.85 * 10**45);
+        assertEq(rdss.vat.dai(address(guest)), 2.85 * 10**45);
+        //
+
+        guestSurplus();
+        assertEq(rdss.vat.dai(address(guest)), 0);
+        assertEq(Vat(address(rdss.vat)).surf(), existingSurf + int256(17.15 * 10**45));
+
+        guestDomain.relayToHost(true);
+        assertEq(host.ddai(), 2.85 ether);
+
+        dss.end.cage();
+        dss.end.cage(host.ilk());
+        dss.end.skim(host.ilk(), address(host));
+
+        hostCage();
+        guestDomain.relayFromHost(true);
+
+        rdss.end.cage(GUEST_COLL_ILK);
+        rdss.end.skim(GUEST_COLL_ILK, address(this));
+        vm.warp(block.timestamp + rdss.end.wait());
+        rdss.end.thaw();
+        rdss.end.flow(GUEST_COLL_ILK);
+
+        guestTell();
+        guestDomain.relayToHost(true);
+
+        _checkFinalState(
+            /*grain:*/          100 ether,
+            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
+            /*l1EscrowDai:*/    existingEscrowDai + 115 ether,
+            /*l2EndDebt:*/      97.85 * 10**45,
+            /*l2EndFix:*/       1 * RAY,
+            /*l2Supply:*/       existingSurf + int256(115 * RAD)
+        );
+    }
+
+    function testCaseSurplusMessageHalfWay() public {
+        (uint256 existingVatDebt, uint256 existingEscrowDai, int256 existingSurf) = _setInitialCaseState();
+
+        // Simulate fees were generated and collected in the local surplus buffer
+        rdss.vat.fold(GUEST_COLL_ILK, address(guest), int256(0.03 * 10**27));
+        assertEq(Vat(address(rdss.vat)).art(GUEST_COLL_ILK, address(this)) * Vat(address(rdss.vat)).rate(GUEST_COLL_ILK), 97.85 * 10**45);
+        assertEq(rdss.vat.debt(), 97.85 * 10**45);
+        assertEq(rdss.vat.dai(address(guest)), 2.85 * 10**45);
+        //
+
+        guestSurplus();
+        assertEq(rdss.vat.dai(address(guest)), 0);
+        assertEq(Vat(address(rdss.vat)).surf(), existingSurf + int256(17.15 * 10**45));
+
+        hostDomain.selectFork();
+
+        dss.end.cage();
+        dss.end.cage(host.ilk());
+        dss.end.skim(host.ilk(), address(host));
+
+        hostCage();
+        guestDomain.relayFromHost(true);
+
+        rdss.end.cage(GUEST_COLL_ILK);
+        rdss.end.skim(GUEST_COLL_ILK, address(this));
+        vm.warp(block.timestamp + rdss.end.wait());
+        rdss.end.thaw();
+        rdss.end.flow(GUEST_COLL_ILK);
+
+        guestTell();
+        guestDomain.relayToHost(true); // This will relay first the surplus message and then the tell message
+        // TODO: Prove that the tell message can not be relayed before the surplus message if it was in queue
+
+        _checkFinalState(
+            /*grain:*/          100 ether,
+            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
+            /*l1EscrowDai:*/    existingEscrowDai + 115 ether,
+            /*l2EndDebt:*/      97.85 * 10**45,
+            /*l2EndFix:*/       1 * RAY,
+            /*l2Supply:*/       existingSurf + int256(115 * RAD)
+        );
+    }
+
+    function testCaseSurplusAccountedOverPreMinted() public {
+        (uint256 existingVatDebt, uint256 existingEscrowDai, int256 existingSurf) = _setInitialCaseState();
+
+        // Simulate fees were generated and collected in the local surplus buffer
+        rdss.vat.fold(GUEST_COLL_ILK, address(guest), int256(0.1 * 10**27));
+        assertEq(Vat(address(rdss.vat)).art(GUEST_COLL_ILK, address(this)) * Vat(address(rdss.vat)).rate(GUEST_COLL_ILK), 104.5 * 10**45);
+        assertEq(rdss.vat.debt(), 104.5 * 10**45);
+        assertEq(rdss.vat.dai(address(guest)), 9.5 * 10**45);
+        //
+
+        guestSurplus();
+        assertEq(rdss.vat.dai(address(guest)), 0);
+        assertEq(Vat(address(rdss.vat)).surf(), existingSurf + int256(10.5 * 10**45));
+
+        guestDomain.relayToHost(true);
+        assertEq(host.ddai(), 9.5 ether);
+
+        host.accrue(104.5 ether);
+
+        assertEq(dss.vat.dai(address(dss.vow)), 9.5 * 10**45);
+        assertEq(dss.dai.balanceOf(address(escrow)), existingEscrowDai + 115 ether);
+        assertEq(dss.vat.debt(), existingVatDebt + 104.5 * 10**45);
+
+        dss.end.cage();
+        dss.end.cage(host.ilk());
+        dss.end.skim(host.ilk(), address(host));
+
+        hostCage();
+        guestDomain.relayFromHost(true);
+
+        rdss.end.cage(GUEST_COLL_ILK);
+        rdss.end.skim(GUEST_COLL_ILK, address(this));
+        vm.warp(block.timestamp + rdss.end.wait());
+        rdss.end.thaw();
+        rdss.end.flow(GUEST_COLL_ILK);
+
+        guestTell();
+        guestDomain.relayToHost(true);
+
+        _checkFinalState(
+            /*grain:*/          104.5 ether,
+            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
+            /*l1EscrowDai:*/    existingEscrowDai + 115 ether,
+            /*l2EndDebt:*/      104.5 * 10**45,
+            /*l2EndFix:*/       1 * RAY,
+            /*l2Supply:*/       existingSurf + int256(115 * RAD)
+        );
+    }
+
+    function testCaseSurplusNotAccountedOverPreMinted() public {
+        (uint256 existingVatDebt, uint256 existingEscrowDai, int256 existingSurf) = _setInitialCaseState();
+
+        // Simulate fees were generated and collected in the local surplus buffer
+        rdss.vat.fold(GUEST_COLL_ILK, address(guest), int256(0.1 * 10**27));
+        assertEq(Vat(address(rdss.vat)).art(GUEST_COLL_ILK, address(this)) * Vat(address(rdss.vat)).rate(GUEST_COLL_ILK), 104.5 * 10**45);
+        assertEq(rdss.vat.debt(), 104.5 * 10**45);
+        assertEq(rdss.vat.dai(address(guest)), 9.5 * 10**45);
+        //
+
+        hostDomain.selectFork();
+        dss.end.cage();
+        dss.end.cage(host.ilk());
+        dss.end.skim(host.ilk(), address(host));
+
+        hostCage();
+        guestDomain.relayFromHost(true);
+
+        rdss.end.cage(GUEST_COLL_ILK);
+        rdss.end.skim(GUEST_COLL_ILK, address(this));
+        guest.heal();
+        vm.warp(block.timestamp + rdss.end.wait());
+        rdss.end.thaw();
+        rdss.end.flow(GUEST_COLL_ILK);
+
+        guestTell();
+        guestDomain.relayToHost(true);
+
+        _checkFinalState(
+            /*grain:*/          100 ether,
+            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
+            /*l1EscrowDai:*/    existingEscrowDai + 115 ether,
+            /*l2EndDebt:*/      95 * RAD,
+            /*l2EndFix:*/       1.1 * 10**27,
+            /*l2Supply:*/       existingSurf + int256(115 * RAD)
+        );
+    }
 }
