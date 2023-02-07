@@ -1068,6 +1068,74 @@ abstract contract IntegrationBaseTest is DssTest {
         assertEq(dss.vat.vice(), 95 * RAD);
     }
 
+    function testCaseDeficitHalfWayRectified() public {
+        (uint256 existingVatDebt, uint256 existingEscrowDai, int256 existingSurf) = _setInitialCaseState(1000 ether, 50 ether);
+
+        // Simulate the position is liquidated
+        rdss.vat.grab(GUEST_COLL_ILK, address(this), address(0), address(guest), -int256(1000 ether), -int256(50 ether));
+
+        assertEq(rdss.vat.sin(address(guest)), 50 * RAD);
+        assertEq(rdss.vat.vice(), 50 * RAD);
+
+        rdss.vat.slip(GUEST_COLL_ILK, address(this), 1000 ether);
+        rdss.vat.frob(GUEST_COLL_ILK, address(this), address(this), address(this), 1000 ether, 45 ether);
+        assertEq(Vat(address(rdss.vat)).ink(GUEST_COLL_ILK, address(this)), 1000 ether);
+        assertEq(Vat(address(rdss.vat)).art(GUEST_COLL_ILK, address(this)) * Vat(address(rdss.vat)).rate(GUEST_COLL_ILK), 45 * RAD);
+        assertEq(rdss.vat.debt(), 95 * RAD);
+
+        guestDeficit();
+        assertEq(guest.dsin(), 50 ether);
+
+        guestDomain.relayToHost(true);
+
+        assertEq(host.dsin(), 50 ether);
+
+        hostRectify();
+
+        assertEq(dss.vat.debt(), existingVatDebt + 150 * RAD);
+        assertEq(dss.dai.balanceOf(address(escrow)), existingEscrowDai + 170 ether);
+        assertEq(dss.vat.sin(address(dss.vow)), 50 * RAD);
+        assertEq(dss.vat.vice(), 50 * RAD);
+        assertEq(host.dsin(), 0);
+
+        dss.end.cage();
+        dss.end.cage(host.ilk());
+        dss.end.skim(host.ilk(), address(host));
+
+        hostCage();
+        guestDomain.relayFromHost(true);
+        // TODO: We might want to prove that rectify message has to be received before cage one
+
+        guest.heal();
+
+        assertEq(rdss.vat.debt(), 45 * RAD);
+        assertEq(rdss.vat.sin(address(guest)), 0);
+        assertEq(rdss.vat.vice(), 0);
+        assertEq(guest.dsin(), 0);
+
+        rdss.end.cage(GUEST_COLL_ILK);
+        rdss.end.skim(GUEST_COLL_ILK, address(this));
+        guest.heal();
+        vm.warp(block.timestamp + rdss.end.wait());
+        rdss.end.thaw();
+        rdss.end.flow(GUEST_COLL_ILK);
+
+        assertEq(rdss.end.debt(), 45 * RAD);
+
+        guestTell();
+        guestDomain.relayToHost(true);
+
+        _checkFinalState(
+            /*grain:*/          100 ether,
+            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
+            /*l1EscrowDai:*/    existingEscrowDai + 115 ether,
+            /*l2EndDebt:*/      45 * RAD,
+            /*l2EndFix:*/       1 * RAY,
+            /*l2Supply:*/       existingSurf + int256(115 * RAD)
+        );
+        assertEq(dss.vat.vice(), 95 * RAD);
+    }
+
     function testCaseDeficitNonRectified() public {
         (uint256 existingVatDebt, uint256 existingEscrowDai, int256 existingSurf) = _setInitialCaseState(1000 ether, 50 ether);
 
@@ -1082,6 +1150,54 @@ abstract contract IntegrationBaseTest is DssTest {
         assertEq(Vat(address(rdss.vat)).ink(GUEST_COLL_ILK, address(this)), 1000 ether);
         assertEq(Vat(address(rdss.vat)).art(GUEST_COLL_ILK, address(this)) * Vat(address(rdss.vat)).rate(GUEST_COLL_ILK), 45 * RAD);
         assertEq(rdss.vat.debt(), 95 * RAD);
+
+        hostDomain.selectFork();
+        dss.end.cage();
+        dss.end.cage(host.ilk());
+        dss.end.skim(host.ilk(), address(host));
+
+        hostCage();
+        guestDomain.relayFromHost(true);
+
+        rdss.end.cage(GUEST_COLL_ILK);
+        rdss.end.skim(GUEST_COLL_ILK, address(this));
+        vm.warp(block.timestamp + rdss.end.wait());
+        rdss.end.thaw();
+        rdss.end.flow(GUEST_COLL_ILK);
+
+        assertEq(rdss.end.debt(), 95 * RAD);
+
+        guestTell();
+        guestDomain.relayToHost(true);
+
+        _checkFinalState(
+            /*grain:*/          100 ether,
+            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
+            /*l1EscrowDai:*/    existingEscrowDai + 115 ether,
+            /*l2EndDebt:*/      95 * RAD,
+            /*l2EndFix:*/       45 * RAY / 95,
+            /*l2Supply:*/       existingSurf + int256(115 * RAD)
+        );
+        assertEq(dss.vat.vice(), 95 * RAD);
+    }
+
+    function testCaseDeficitHalfWayNonRectified() public {
+        (uint256 existingVatDebt, uint256 existingEscrowDai, int256 existingSurf) = _setInitialCaseState(1000 ether, 50 ether);
+
+        // Simulate the position is liquidated
+        rdss.vat.grab(GUEST_COLL_ILK, address(this), address(0), address(guest), -int256(1000 ether), -int256(50 ether));
+
+        assertEq(rdss.vat.sin(address(guest)), 50 * RAD);
+        assertEq(rdss.vat.vice(), 50 * RAD);
+
+        rdss.vat.slip(GUEST_COLL_ILK, address(this), 1000 ether);
+        rdss.vat.frob(GUEST_COLL_ILK, address(this), address(this), address(this), 1000 ether, 45 ether);
+        assertEq(Vat(address(rdss.vat)).ink(GUEST_COLL_ILK, address(this)), 1000 ether);
+        assertEq(Vat(address(rdss.vat)).art(GUEST_COLL_ILK, address(this)) * Vat(address(rdss.vat)).rate(GUEST_COLL_ILK), 45 * RAD);
+        assertEq(rdss.vat.debt(), 95 * RAD);
+
+        guestDeficit();
+        assertEq(guest.dsin(), 50 ether);
 
         hostDomain.selectFork();
         dss.end.cage();
