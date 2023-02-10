@@ -86,6 +86,6 @@ We then call `vat.swell(daiJoin, someLargeNumber)` to make sure existing holders
 
 2. We close out the canonical DAI bridge. This will restrict DAI minting to just `dss-bridge` at this point.
 
-3. After all the in-transit transactions have cleared (keepers can force any stragglers) we de-auth the canonical bridge from `dai`. We then set `vat.dai(daiJoin)` based on this equation `vat.dai(daiJoin) + vat.dai(not in daijoin) = vat.surf` or `vat.dai(daiJoin) = vat.surf - vat.dai(not in daijoin)`. This equation holds because we have no activated any debt features of the `vat` yet, so it will purely be bridged dai moving around.
+3. After all the in-transit transactions have cleared (keepers can force any stragglers) we de-auth the canonical bridge from `dai`. We then set `vat.dai(daiJoin)` based on this equation `vat.dai(daiJoin) + vat.dai(not in daijoin) = vat.surf` or `vat.dai(daiJoin) = vat.surf - vat.dai(not in daijoin)`. This equation holds because we have not activated any debt features of the `vat` yet, so it will purely be bridged dai moving around.
 
 4. We can then increase the debt ceiling if desired.
