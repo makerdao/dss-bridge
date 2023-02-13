@@ -272,7 +272,10 @@ abstract contract DomainHost {
         (uint256 ink, uint256 art) = vat.urns(ilk, address(this));
         if (art < ink) {
             address _vow = vow;
-            uint256 diff = ink - art;
+            uint256 diff;
+            unchecked {
+                diff = ink - art;
+            }
             vat.suck(_vow, _vow, diff * RAY); // This needs to be done to make sure we can deduct sin[vow] and vice in the next call
             vat.grab(ilk, address(this), address(this), _vow, 0, _int256(diff));
         }
