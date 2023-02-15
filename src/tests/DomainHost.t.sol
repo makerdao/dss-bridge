@@ -180,11 +180,17 @@ contract DomainHostTest is DssTest {
     function testAuth() public {
         host.deny(address(this));
 
-        bytes[] memory funcs = new bytes[](4);
-        funcs[0] = abi.encodeWithSelector(EmptyDomainHost.lift.selector, 0);
-        funcs[1] = abi.encodeWithSelector(DomainHost.release.selector, 0);
-        funcs[2] = abi.encodeWithSelector(DomainHost.accrue.selector, 0);
-        funcs[3] = abi.encodeWithSelector(EmptyDomainHost.rectify.selector);
+        bytes[] memory funcs = new bytes[](9);
+        funcs[0] = abi.encodeWithSelector(DomainHost.rely.selector, address(0));
+        funcs[1] = abi.encodeWithSelector(DomainHost.deny.selector, address(0));
+        funcs[2] = abi.encodeWithSelector(DomainHost.file.selector, bytes32(""), address(0));
+        funcs[3] = abi.encodeWithSelector(EmptyDomainHost.lift.selector, 0);
+        funcs[4] = abi.encodeWithSelector(DomainHost.release.selector, 0);
+        funcs[5] = abi.encodeWithSelector(DomainHost.accrue.selector, 0);
+        funcs[6] = abi.encodeWithSelector(EmptyDomainHost.rectify.selector);
+        TeleportGUID memory guid = TeleportGUID({sourceDomain: bytes32(""), targetDomain: bytes32(""), receiver: bytes32(""), operator: bytes32(""), amount: 0, nonce: 0, timestamp: 0});
+        funcs[7] = abi.encodeWithSelector(DomainHost.registerMint.selector, guid);
+        funcs[8] = abi.encodeWithSelector(DomainHost.settle.selector, bytes32(""), bytes32(""), 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
             assertRevert(address(host), funcs[i], "DomainHost/not-authorized");
@@ -195,10 +201,10 @@ contract DomainHostTest is DssTest {
         host.setIsGuest(false);
 
         bytes[] memory funcs = new bytes[](6);
-        funcs[0] = abi.encodeWithSelector(EmptyDomainHost.surplus.selector, 0, 0, 0);
-        funcs[1] = abi.encodeWithSelector(EmptyDomainHost.deficit.selector, 0, 0, 0);
-        funcs[2] = abi.encodeWithSelector(EmptyDomainHost.tell.selector, 0, 0, 0);
-        funcs[3] = abi.encodeWithSelector(EmptyDomainHost.withdraw.selector, 0, 0, 0);
+        funcs[0] = abi.encodeWithSelector(EmptyDomainHost.withdraw.selector, 0, 0, 0);
+        funcs[1] = abi.encodeWithSelector(EmptyDomainHost.surplus.selector, 0, 0, 0);
+        funcs[2] = abi.encodeWithSelector(EmptyDomainHost.deficit.selector, 0, 0, 0);
+        funcs[3] = abi.encodeWithSelector(EmptyDomainHost.tell.selector, 0, 0, 0);
         funcs[4] = abi.encodeWithSelector(EmptyDomainHost.finalizeRegisterMint.selector, 0, 0, 0, 0, 0, 0, 0);
         funcs[5] = abi.encodeWithSelector(EmptyDomainHost.finalizeSettle.selector, 0, 0, 0);
 
