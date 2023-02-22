@@ -317,10 +317,6 @@ abstract contract DomainHost {
         uint256 _ddai = ddai;
         require(_ddai > _dsin, "DomainHost/no-surplus");
 
-        unchecked { _wad = _ddai - _dsin; }
-        dai.transferFrom(address(escrow), address(this), _wad);
-        daiJoin.join(address(vow), _wad);
-
         int256 diff = _int256(_grain) - _int256(grain);
         if (diff > 0) {
             vat.slip(ilk, address(this), diff);
@@ -328,6 +324,11 @@ abstract contract DomainHost {
             daiJoin.exit(escrow, uint256(diff));
             grain = _grain;
         }
+
+        unchecked { _wad = _ddai - _dsin; }
+        dai.transferFrom(address(escrow), address(this), _wad);
+        daiJoin.join(address(vow), _wad);
+
         dsin = 0;
         ddai = 0;
 

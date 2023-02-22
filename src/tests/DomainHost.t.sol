@@ -412,6 +412,34 @@ contract DomainHostTest is DssTest {
         assertEq(host.ddai(), 0);
     }
 
+    function testPushSurplusGrainNeededEdgeCase() public {
+        assertEq(vat.dai(vow), 0);
+        assertEq(dai.balanceOf(address(escrow)), 0 ether);
+        assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 0);
+        assertEq(host.lid(), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Surplus(100 ether);
+        host.surplus(0, 100 ether);
+
+        assertEq(vat.dai(vow), 0);
+        assertEq(dai.balanceOf(address(escrow)), 0);
+        assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 100 ether);
+        assertEq(host.lid(), 1);
+
+        emit Accrue(100 ether);
+        vm.expectRevert();
+        host.accrue(0);
+        host.accrue(100 ether);
+        assertEq(vat.dai(vow), 100 * RAD);
+        assertEq(dai.balanceOf(address(escrow)), 0);
+        assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 0);
+    }
+
+
     function testPushDeficit() public {
         assertEq(host.dsin(), 0);
 
