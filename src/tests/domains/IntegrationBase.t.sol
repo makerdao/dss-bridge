@@ -822,7 +822,7 @@ abstract contract IntegrationBaseTest is DssTest {
         );
     }
 
-    function testCaseSurplusAccountedButNotAcrrued() public {
+    function testCaseSurplusAccountedButNotAccrued() public {
         (uint256 existingVatDebt, uint256 existingEscrowDai, int256 existingSurf) = _setInitialCaseState(1000 ether, 95 ether);
 
         // Simulate fees were generated and collected in the local surplus buffer
