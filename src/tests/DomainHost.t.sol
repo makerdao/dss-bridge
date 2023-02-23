@@ -430,9 +430,10 @@ contract DomainHostTest is DssTest {
         assertEq(host.ddai(), 100 ether);
         assertEq(host.lid(), 1);
 
-        emit Accrue(100 ether);
         vm.expectRevert();
         host.accrue(0);
+        vm.expectEmit(true, true, true, true);
+        emit Accrue(100 ether);
         host.accrue(100 ether);
         assertEq(vat.dai(vow), 100 * RAD);
         assertEq(dai.balanceOf(address(escrow)), 0);
