@@ -699,7 +699,9 @@ abstract contract IntegrationBaseTest is DssTest {
         guestDomain.selectFork();
         assertEq(rdss.end.debt(), l2EndDebt, "Error final L2 end debt");
         assertEq(rdss.end.fix(GUEST_COLL_ILK), l2EndFix, "Error final L2 end fix");
-        assertEq(int256(rdss.vat.debt()) + Vat(address(rdss.vat)).surf() - int256(rdss.vat.dai(address(guest))), l2Supply, "Error final L2 supply");
+        assertEq(int256(rdss.vat.debt()) + Vat(address(rdss.vat)).surf(), l2Supply, "Error final L2 supply");
+
+        assertGe(int256(l1EscrowDai * RAY), l2Supply, "Escrow is not enough to cover supply");
 
         vm.selectFork(activeFork);
     }
