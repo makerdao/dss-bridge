@@ -540,10 +540,10 @@ contract DomainHostTest is DssTest {
 
     function testExit() public {
         // Setup initial conditions
-        host.lift(100 ether);       // DC raised to 100
+        host.lift(100 ether); // DC raised to 100
         vat.cage();
         host.cage();
-        host.tell(0, 70 * RAD);        // Guest later reports on 30 debt is actually used
+        host.tell(0, 70 * RAD); // Simulates guest reported a final 70 DAI debt
 
         // Simulate user getting some gems for this ilk (normally handled by end)
         vat.slip(ILK, address(this), 50 ether);
@@ -558,10 +558,10 @@ contract DomainHostTest is DssTest {
 
     function testExitBytes32() public {
         // Setup initial conditions
-        host.lift(100 ether);       // DC raised to 100
+        host.lift(100 ether); // DC raised to 100
         vat.cage();
         host.cage();
-        host.tell(0, 70 * RAD);        // Guest later reports on 30 debt is actually used
+        host.tell(0, 70 * RAD); // Simulates guest reported a final 70 DAI debt
 
         // Simulate user getting some gems for this ilk (normally handled by end)
         vat.slip(ILK, address(this), 50 ether);
@@ -576,10 +576,10 @@ contract DomainHostTest is DssTest {
 
     function testUndoExit() public {
         // Setup initial conditions
-        host.lift(100 ether);       // DC raised to 100
+        host.lift(100 ether); // DC raised to 100
         vat.cage();
         host.cage();
-        host.tell(0, 70 * RAD);        // Guest later reports on 30 debt is actually used
+        host.tell(0, 70 * RAD); // Simulates guest reported a final 70 DAI debt
 
         // Simulate user getting some gems for this ilk (normally handled by end)
         vat.slip(ILK, address(this), 50 ether);
@@ -599,10 +599,10 @@ contract DomainHostTest is DssTest {
 
     function testUndoExitBytes32() public {
         // Setup initial conditions
-        host.lift(100 ether);       // DC raised to 100
+        host.lift(100 ether); // DC raised to 100
         vat.cage();
         host.cage();
-        host.tell(0, 70 * RAD);        // Guest later reports on 30 debt is actually used
+        host.tell(0, 70 * RAD); // Simulates guest reported a final 70 DAI debt
 
         // Simulate user getting some gems for this ilk (normally handled by end)
         vat.slip(ILK, address(this), 50 ether);
