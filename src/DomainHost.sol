@@ -310,6 +310,7 @@ abstract contract DomainHost {
     }
 
     /// @notice Governance is accruing surplus
+    /// @dev This is a potentially dangerous operation as a malicious domain can trigger unintended consequences due to fake surplus
     /// @param _grain It should be the amount of grain necessary to cover debt in the guest domain [WAD]
     function accrue(uint256 _grain) external auth returns (uint256 _wad) {
         require(vat.live() == 1, "DomainHost/vat-not-live");
