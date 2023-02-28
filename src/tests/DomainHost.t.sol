@@ -548,7 +548,7 @@ contract DomainHostTest is DssTest {
         // Simulate user getting some gems for this ilk (normally handled by end)
         vat.slip(ILK, address(this), 50 ether);
 
-        uint256 claim = 50 ether * (host.debt() / host.grain());
+        uint256 claim = 50 ether * (70 * RAD / 100 ether);
         vm.expectEmit(true, true, true, true);
         emit Exit(address(this), address(123), 50 ether, claim);
         host.exit(address(123), 50 ether);
@@ -566,7 +566,7 @@ contract DomainHostTest is DssTest {
         // Simulate user getting some gems for this ilk (normally handled by end)
         vat.slip(ILK, address(this), 50 ether);
 
-        uint256 claim = 50 ether * (host.debt() / host.grain());
+        uint256 claim = 50 ether * (70 * RAD / 100 ether);
         vm.expectEmit(true, true, true, true);
         emit Exit(address(this), bytes32(uint256(123)), 50 ether, claim);
         host.exit(bytes32(uint256(123)), 50 ether);
