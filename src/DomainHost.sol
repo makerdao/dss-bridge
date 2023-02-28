@@ -379,7 +379,9 @@ abstract contract DomainHost {
         uint256 wad = grain + ddai;
         uint256 debtW = _divup(_debt, RAY);
         if (wad > debtW) {
-            wad = wad - debtW;
+            unchecked {
+                wad = wad - debtW;
+            }
             dai.transferFrom(address(escrow), address(this), wad);
             daiJoin.join(address(vow), wad);
         }
