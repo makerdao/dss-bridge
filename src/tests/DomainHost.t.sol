@@ -526,16 +526,16 @@ contract DomainHostTest is DssTest {
         host.lift(100 ether);
 
         vm.expectRevert("DomainHost/live");
-        host.tell(0, 100 ether);
+        host.tell(0, 100 * RAD);
     }
 
     function testTellTwice() public {
         host.lift(100 ether);
         host.cage();
-        host.tell(0, 100 ether);
+        host.tell(0, 100 * RAD);
 
         vm.expectRevert("DomainHost/debt-reported");
-        host.tell(1, 50 ether);
+        host.tell(1, 50 * RAD);
     }
 
     function testExit() public {
