@@ -737,14 +737,14 @@ abstract contract IntegrationBaseTest is DssTest {
         guestTell();
         guestDomain.relayToHost(true);
 
-        _checkFinalState(
-            /*grain:*/          100 ether,
-            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
-            /*l1EscrowDai:*/    115 ether,
-            /*l2EndDebt:*/      95 * RAD,
-            /*l2EndFix:*/       1 * RAY,
-            /*l2Supply:*/       int256(115 * RAD)
-        );
+        _checkFinalState({
+            grain:       100 ether,
+            l1Vatdebt:   existingVatDebt + 95 * RAD,
+            l1EscrowDai: 115 ether,
+            l2EndDebt:   95 * RAD,
+            l2EndFix:    1 * RAY,
+            l2Supply:    int256(115 * RAD)
+        });
     }
 
     function testCaseSurplusAccounted() public {
@@ -786,14 +786,14 @@ abstract contract IntegrationBaseTest is DssTest {
         guestTell();
         guestDomain.relayToHost(true);
 
-        _checkFinalState(
-            /*grain:*/          100 ether,
-            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
-            /*l1EscrowDai:*/    115 ether,
-            /*l2EndDebt:*/      97.85 * 10**45,
-            /*l2EndFix:*/       1 * RAY,
-            /*l2Supply:*/       int256(115 * RAD)
-        );
+        _checkFinalState({
+            grain:       100 ether,
+            l1Vatdebt:   existingVatDebt + 95 * RAD,
+            l1EscrowDai: 115 ether,
+            l2EndDebt:   97.85 * 10**45,
+            l2EndFix:    1 * RAY,
+            l2Supply:    int256(115 * RAD)
+        });
     }
 
     function testCaseSurplusNotAccounted() public {
@@ -824,14 +824,14 @@ abstract contract IntegrationBaseTest is DssTest {
         guestTell();
         guestDomain.relayToHost(true);
 
-        _checkFinalState(
-            /*grain:*/          100 ether,
-            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
-            /*l1EscrowDai:*/    115 ether,
-            /*l2EndDebt:*/      95 * RAD,
-            /*l2EndFix:*/       1.03 * 10**27,
-            /*l2Supply:*/       int256(115 * RAD)
-        );
+        _checkFinalState({
+            grain:       100 ether,
+            l1Vatdebt:   existingVatDebt + 95 * RAD,
+            l1EscrowDai: 115 ether,
+            l2EndDebt:   95 * RAD,
+            l2EndFix:    1.03 * 10**27,
+            l2Supply:    int256(115 * RAD)
+        });
     }
 
     function testCaseSurplusAccountedButNotAccrued() public {
@@ -868,14 +868,14 @@ abstract contract IntegrationBaseTest is DssTest {
         guestTell();
         guestDomain.relayToHost(true);
 
-        _checkFinalState(
-            /*grain:*/          100 ether,
-            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
-            /*l1EscrowDai:*/    115 ether,
-            /*l2EndDebt:*/      97.85 * 10**45,
-            /*l2EndFix:*/       1 * RAY,
-            /*l2Supply:*/       int256(115 * RAD)
-        );
+        _checkFinalState({
+            grain:       100 ether,
+            l1Vatdebt:   existingVatDebt + 95 * RAD,
+            l1EscrowDai: 115 ether,
+            l2EndDebt:   97.85 * 10**45,
+            l2EndFix:    1 * RAY,
+            l2Supply:    int256(115 * RAD)
+        });
     }
 
     function testCaseSurplusMessageHalfWay() public {
@@ -912,14 +912,14 @@ abstract contract IntegrationBaseTest is DssTest {
         guestDomain.relayToHost(true); // This will relay first the surplus message and then the tell message
         // TODO: Prove that the tell message can not be relayed before the surplus message if it was in queue
 
-        _checkFinalState(
-            /*grain:*/          100 ether,
-            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
-            /*l1EscrowDai:*/    115 ether,
-            /*l2EndDebt:*/      97.85 * 10**45,
-            /*l2EndFix:*/       1 * RAY,
-            /*l2Supply:*/       int256(115 * RAD)
-        );
+        _checkFinalState({
+            grain:       100 ether,
+            l1Vatdebt:   existingVatDebt + 95 * RAD,
+            l1EscrowDai: 115 ether,
+            l2EndDebt:   97.85 * 10**45,
+            l2EndFix:    1 * RAY,
+            l2Supply:    int256(115 * RAD)
+        });
     }
 
     function testCaseSurplusAccountedOverPreMinted() public {
@@ -962,14 +962,14 @@ abstract contract IntegrationBaseTest is DssTest {
         guestTell();
         guestDomain.relayToHost(true);
 
-        _checkFinalState(
-            /*grain:*/          104.5 ether,
-            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
-            /*l1EscrowDai:*/    115 ether,
-            /*l2EndDebt:*/      104.5 * 10**45,
-            /*l2EndFix:*/       1 * RAY,
-            /*l2Supply:*/       int256(115 * RAD)
-        );
+        _checkFinalState({
+            grain:       104.5 ether,
+            l1Vatdebt:   existingVatDebt + 95 * RAD,
+            l1EscrowDai: 115 ether,
+            l2EndDebt:   104.5 * 10**45,
+            l2EndFix:    1 * RAY,
+            l2Supply:    int256(115 * RAD)
+        });
     }
 
     function testCaseSurplusAccountedNotAccruedOverPreMinted() public {
@@ -1006,14 +1006,14 @@ abstract contract IntegrationBaseTest is DssTest {
         guestTell();
         guestDomain.relayToHost(true);
 
-        _checkFinalState(
-            /*grain:*/          100 ether,
-            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
-            /*l1EscrowDai:*/    115 ether,
-            /*l2EndDebt:*/      104.5 * 10**45,
-            /*l2EndFix:*/       1 * RAY,
-            /*l2Supply:*/       int256(115 * RAD)
-        );
+        _checkFinalState({
+            grain:       100 ether,
+            l1Vatdebt:   existingVatDebt + 95 * RAD,
+            l1EscrowDai: 115 ether,
+            l2EndDebt:   104.5 * 10**45,
+            l2EndFix:    1 * RAY,
+            l2Supply:    int256(115 * RAD)
+        });
     }
 
     function testCaseSurplusNotAccountedOverPreMinted() public {
@@ -1044,14 +1044,14 @@ abstract contract IntegrationBaseTest is DssTest {
         guestTell();
         guestDomain.relayToHost(true);
 
-        _checkFinalState(
-            /*grain:*/          100 ether,
-            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
-            /*l1EscrowDai:*/    115 ether,
-            /*l2EndDebt:*/      95 * RAD,
-            /*l2EndFix:*/       1.1 * 10**27,
-            /*l2Supply:*/       int256(115 * RAD)
-        );
+        _checkFinalState({
+            grain:       100 ether,
+            l1Vatdebt:   existingVatDebt + 95 * RAD,
+            l1EscrowDai: 115 ether,
+            l2EndDebt:   95 * RAD,
+            l2EndFix:    1.1 * 10**27,
+            l2Supply:    int256(115 * RAD)
+        });
     }
 
     function testCaseSurplusAccountedNotAccruedOverPreMintedNegativeSurf() public {
@@ -1101,14 +1101,14 @@ abstract contract IntegrationBaseTest is DssTest {
         guestTell();
         guestDomain.relayToHost(true);
 
-        _checkFinalState(
-            /*grain:*/          100 ether,
-            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
-            /*l1EscrowDai:*/    95 ether,
-            /*l2EndDebt:*/      104.5 * 10**45,
-            /*l2EndFix:*/       1 * RAY,
-            /*l2Supply:*/       int256(104.5 * 10**45) - int256(9.5 * 10**45)
-        );
+        _checkFinalState({
+            grain:       100 ether,
+            l1Vatdebt:   existingVatDebt + 95 * RAD,
+            l1EscrowDai: 95 ether,
+            l2EndDebt:   104.5 * 10**45,
+            l2EndFix:    1 * RAY,
+            l2Supply:    int256(104.5 * 10**45) - int256(9.5 * 10**45)
+        });
         guestDomain.selectFork();
     }
 
@@ -1171,14 +1171,14 @@ abstract contract IntegrationBaseTest is DssTest {
         guestTell();
         guestDomain.relayToHost(true);
 
-        _checkFinalState(
-            /*grain:*/          100 ether,
-            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
-            /*l1EscrowDai:*/    115 ether,
-            /*l2EndDebt:*/      45 * RAD,
-            /*l2EndFix:*/       1 * RAY,
-            /*l2Supply:*/       int256(115 * RAD)
-        );
+        _checkFinalState({
+            grain:       100 ether,
+            l1Vatdebt:   existingVatDebt + 95 * RAD,
+            l1EscrowDai: 115 ether,
+            l2EndDebt:   45 * RAD,
+            l2EndFix:    1 * RAY,
+            l2Supply:    int256(115 * RAD)
+        });
         assertEq(dss.vat.vice(), 95 * RAD);
     }
 
@@ -1239,14 +1239,14 @@ abstract contract IntegrationBaseTest is DssTest {
         guestTell();
         guestDomain.relayToHost(true);
 
-        _checkFinalState(
-            /*grain:*/          100 ether,
-            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
-            /*l1EscrowDai:*/    115 ether,
-            /*l2EndDebt:*/      45 * RAD,
-            /*l2EndFix:*/       1 * RAY,
-            /*l2Supply:*/       int256(115 * RAD)
-        );
+        _checkFinalState({
+            grain:       100 ether,
+            l1Vatdebt:   existingVatDebt + 95 * RAD,
+            l1EscrowDai: 115 ether,
+            l2EndDebt:   45 * RAD,
+            l2EndFix:    1 * RAY,
+            l2Supply:    int256(115 * RAD)
+        });
         assertEq(dss.vat.vice(), 95 * RAD);
     }
 
@@ -1284,14 +1284,14 @@ abstract contract IntegrationBaseTest is DssTest {
         guestTell();
         guestDomain.relayToHost(true);
 
-        _checkFinalState(
-            /*grain:*/          100 ether,
-            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
-            /*l1EscrowDai:*/    115 ether,
-            /*l2EndDebt:*/      95 * RAD,
-            /*l2EndFix:*/       45 * RAY / 95,
-            /*l2Supply:*/       int256(115 * RAD)
-        );
+        _checkFinalState({
+            grain:       100 ether,
+            l1Vatdebt:   existingVatDebt + 95 * RAD,
+            l1EscrowDai: 115 ether,
+            l2EndDebt:   95 * RAD,
+            l2EndFix:    45 * RAY / 95,
+            l2Supply:    int256(115 * RAD)
+        });
         assertEq(dss.vat.vice(), 95 * RAD);
     }
 
@@ -1332,14 +1332,14 @@ abstract contract IntegrationBaseTest is DssTest {
         guestTell();
         guestDomain.relayToHost(true);
 
-        _checkFinalState(
-            /*grain:*/          100 ether,
-            /*l1Vatdebt:*/      existingVatDebt + 95 * RAD,
-            /*l1EscrowDai:*/    115 ether,
-            /*l2EndDebt:*/      95 * RAD,
-            /*l2EndFix:*/       45 * RAY / 95,
-            /*l2Supply:*/       int256(115 * RAD)
-        );
+        _checkFinalState({
+            grain:       100 ether,
+            l1Vatdebt:   existingVatDebt + 95 * RAD,
+            l1EscrowDai: 115 ether,
+            l2EndDebt:   95 * RAD,
+            l2EndFix:    45 * RAY / 95,
+            l2Supply:    int256(115 * RAD)
+        });
         assertEq(dss.vat.vice(), 95 * RAD);
     }
 }
