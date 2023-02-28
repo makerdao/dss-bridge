@@ -200,7 +200,7 @@ contract ArbitrumDomainHost is DomainHost {
         uint256 maxGas,
         uint256 gasPriceBid
     ) public payable {
-        (uint256 _rid) = _cage();
+        uint256 _rid = _cage();
         inbox.createRetryableTicket{value: msg.value}(
             guest,
             0, // we always assume that l2CallValue = 0

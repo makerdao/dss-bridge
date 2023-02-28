@@ -124,7 +124,7 @@ contract OptimismDomainHost is DomainHost {
         cage(glCage);
     }
     function cage(uint32 gasLimit) public {
-        (uint256 _rid) = _cage();
+        uint256 _rid = _cage();
         l1messenger.sendMessage(
             guest,
             abi.encodeWithSelector(DomainGuestLike.cage.selector, _rid),
@@ -140,7 +140,7 @@ contract OptimismDomainHost is DomainHost {
         exit(usr, wad, glExit);
     }
     function exit(address usr, uint256 wad, uint32 gasLimit) public {
-        (uint256 claim) = _exit(usr, wad);
+        uint256 claim = _exit(usr, wad);
         l1messenger.sendMessage(
             guest,
             abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, claim),
