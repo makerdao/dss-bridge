@@ -134,6 +134,7 @@ contract ArbitrumDomainHost is DomainHost {
         uint256 maxGas,
         uint256 gasPriceBid
     ) public payable {
+        (uint256 _rid, uint256 rad) = _lift(wad);
         inbox.createRetryableTicket{value: msg.value}(
             guest,
             0, // we always assume that l2CallValue = 0
@@ -143,7 +144,7 @@ contract ArbitrumDomainHost is DomainHost {
             maxGas,
             gasPriceBid,
             // Needed to inline _lift(wad) here because of stack too deep
-            abi.encodeWithSelector(DomainGuestLike.lift.selector, _lift(wad), wad)
+            abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, rad)
         );
     }
     function lift(

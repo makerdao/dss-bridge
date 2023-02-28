@@ -92,10 +92,10 @@ contract OptimismDomainHost is DomainHost {
         lift(wad, glLift);
     }
     function lift(uint256 wad, uint32 gasLimit) public {
-        uint256 _rid = _lift(wad);
+        (uint256 _rid, uint256 rad) = _lift(wad);
         l1messenger.sendMessage(
             guest,
-            abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, wad),
+            abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, rad),
             gasLimit
         );
     }

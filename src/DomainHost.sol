@@ -94,7 +94,7 @@ abstract contract DomainHost {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event File(bytes32 indexed what, address data);
-    event Lift(uint256 wad);
+    event Lift(uint256 rad);
     event Release(uint256 wad);
     event Surplus(uint256 wad);
     event Deficit(uint256 wad);
@@ -239,10 +239,10 @@ abstract contract DomainHost {
     /// @dev Please note that pre-mint DAI cannot be removed from the remote domain
     /// until the remote domain signals that it is safe to do so
     /// @param wad The new debt ceiling [WAD]
-    function _lift(uint256 wad) internal auth returns (uint256 _rid) {
+    function _lift(uint256 wad) internal auth returns (uint256 _rid, uint256 rad) {
         require(vat.live() == 1, "DomainHost/vat-not-live");
 
-        uint256 rad = wad * RAY;
+        rad = wad * RAY;
         uint256 dlineWad;
         int256 dline = _int256(rad) - _int256(line);
 
@@ -260,7 +260,7 @@ abstract contract DomainHost {
 
         _rid = rid++;
 
-        emit Lift(wad);
+        emit Lift(rad);
     }
 
     /// @notice Withdraw pre-mint DAI from the remote domain

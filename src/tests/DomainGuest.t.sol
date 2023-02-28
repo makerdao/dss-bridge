@@ -34,8 +34,8 @@ contract EmptyDomainGuest is DomainGuest {
         _withdraw(to, amount);
         lastPayload = abi.encodeWithSelector(DomainHostLike.withdraw.selector, to, amount);
     }
-    function lift(uint256 _lid, uint256 wad) external hostOnly {
-        _lift(_lid, wad);
+    function lift(uint256 _lid, uint256 rad) external hostOnly {
+        _lift(_lid, rad);
     }
     function surplus() external {
         (uint256 _rid, uint256 _wad) = _surplus();
@@ -96,7 +96,7 @@ contract DomainGuestTest is DssTest {
     bytes32 constant SOURCE_DOMAIN = "SOME-DOMAIN-A";
     bytes32 constant TARGET_DOMAIN = "SOME-DOMAIN-B";
 
-    event Lift(uint256 wad);
+    event Lift(uint256 rad);
     event Surplus(uint256 wad);
     event Deficit(uint256 wad);
     event Rectify(uint256 wad);
@@ -196,8 +196,8 @@ contract DomainGuestTest is DssTest {
         assertEq(guest.lid(), 0);
 
         vm.expectEmit(true, true, true, true);
-        emit Lift(100 * WAD);
-        guest.lift(0, 100 * WAD);
+        emit Lift(100 * RAD);
+        guest.lift(0, 100 * RAD);
 
         assertEq(vat.Line(), 100 * RAD);
         assertEq(guest.lid(), 1);
@@ -427,7 +427,7 @@ contract DomainGuestTest is DssTest {
     }
 
     function testTell() public {
-        guest.lift(0, 100 * WAD);
+        guest.lift(0, 100 * RAD);
         end.setDebt(10 * RAD);
 
         vm.expectEmit(true, true, true, true);

@@ -45,8 +45,8 @@ contract EmptyDomainHost is DomainHost {
         _withdraw(to, amount);
     }
     function lift(uint256 wad) external {
-        uint256 _rid = _lift(wad);
-        lastPayload = abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, wad);
+        (uint256 _rid, uint256 rad) = _lift(wad);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, rad);
     }
     function surplus(uint256 _lid, uint256 wad) external guestOnly {
         _surplus(_lid, wad);
@@ -114,7 +114,7 @@ contract DomainHostTest is DssTest {
     bytes32 constant SOURCE_DOMAIN = "SOME-DOMAIN-B";
     bytes32 constant TARGET_DOMAIN = "SOME-DOMAIN-C";
 
-    event Lift(uint256 wad);
+    event Lift(uint256 rad);
     event Release(uint256 wad);
     event Surplus(uint256 wad);
     event Deficit(uint256 wad);
@@ -238,7 +238,7 @@ contract DomainHostTest is DssTest {
     function testLift() public {
         // Set DC to 100
         vm.expectEmit(true, true, true, true);
-        emit Lift(100 ether);
+        emit Lift(100 * RAD);
         host.lift(100 ether);
 
         (uint256 ink, uint256 art) = vat.urns(ILK, address(host));
@@ -248,7 +248,7 @@ contract DomainHostTest is DssTest {
         assertEq(host.line(), 100 * RAD);
         assertEq(host.grain(), 100 ether);
         assertEq(host.rid(), 1);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 0, 100 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 0, 100 * RAD));
 
         // Raise DC to 200
         host.lift(200 ether);
@@ -260,7 +260,7 @@ contract DomainHostTest is DssTest {
         assertEq(host.line(), 200 * RAD);
         assertEq(host.grain(), 200 ether);
         assertEq(host.rid(), 2);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 1, 200 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 1, 200 * RAD));
 
         // Lower DC back to 100 - should not remove escrowed DAI
         host.lift(100 ether);
@@ -272,7 +272,7 @@ contract DomainHostTest is DssTest {
         assertEq(host.line(), 100 * RAD);
         assertEq(host.grain(), 200 ether);
         assertEq(host.rid(), 3);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 2, 100 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 2, 100 * RAD));
     }
 
     function testRelease() public {
@@ -286,7 +286,7 @@ contract DomainHostTest is DssTest {
         assertEq(host.line(), 100 * RAD);
         assertEq(host.grain(), 100 ether);
         assertEq(host.rid(), 1);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 0, 100 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 0, 100 * RAD));
 
         // Lower DC back to 50 - should not remove escrowed DAI
         host.lift(50 ether);
@@ -299,7 +299,7 @@ contract DomainHostTest is DssTest {
         assertEq(host.grain(), 100 ether);
         assertEq(host.rid(), 2);
         assertEq(host.lid(), 0);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 1, 50 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 1, 50 * RAD));
 
         // Remote domain triggers release at a later time
         vm.expectEmit(true, true, true, true);
@@ -312,7 +312,7 @@ contract DomainHostTest is DssTest {
         assertEq(dai.balanceOf(address(escrow)), 50 ether);
         assertEq(host.line(), 50 * RAD);
         assertEq(host.grain(), 50 ether);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 1, 50 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 1, 50 * RAD));
     }
 
     function testReleasePermissionlessRepay() public {
@@ -356,7 +356,7 @@ contract DomainHostTest is DssTest {
         assertEq(host.line(), 50 * RAD);
         assertEq(host.grain(), 125 ether);
         assertEq(host.rid(), 4);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 3, 50 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 3, 50 * RAD));
 
         host.release(50 ether);   // First release comes in
 
@@ -367,7 +367,7 @@ contract DomainHostTest is DssTest {
         assertEq(host.line(), 50 * RAD);
         assertEq(host.grain(), 75 ether);
         assertEq(host.rid(), 4);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 3, 50 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 3, 50 * RAD));
 
         host.release(25 ether);   // Second release comes in
 
@@ -378,7 +378,7 @@ contract DomainHostTest is DssTest {
         assertEq(host.line(), 50 * RAD);
         assertEq(host.grain(), 50 ether);
         assertEq(host.rid(), 4);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 3, 50 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 3, 50 * RAD));
     }
 
     function testPushSurplus() public {

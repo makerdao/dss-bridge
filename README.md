@@ -28,7 +28,7 @@ Specify a new global debt ceiling for the remote domain. If the amount is an inc
 
 This will back the pre-minted DAI by `vat.gems` that represent shares to the remote domain.
 
-This will trigger a call to `DomainGuest.lift(uint256 _lid, uint256 wad)`.
+This will trigger a call to `DomainGuest.lift(uint256 _lid, uint256 rad)` with `rad == wad * RAY`.
 
 ### `DomainGuest.surplus()`
 

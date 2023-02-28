@@ -95,7 +95,7 @@ abstract contract DomainGuest {
     event Deny(address indexed usr);
     event File(bytes32 indexed what, address data);
     event File(bytes32 indexed what, uint256 data);
-    event Lift(uint256 wad);
+    event Lift(uint256 rad);
     event Surplus(uint256 wad);
     event Deficit(uint256 wad);
     event Rectify(uint256 wad);
@@ -204,13 +204,13 @@ abstract contract DomainGuest {
 
     /// @notice Record changes in Line
     /// @param _lid Local ordering id
-    /// @param wad The new debt ceiling [WAD]
-    function _lift(uint256 _lid, uint256 wad) internal ordered(_lid) {
+    /// @param rad The new debt ceiling [RAD]
+    function _lift(uint256 _lid, uint256 rad) internal ordered(_lid) {
         require(live == 1, "DomainGuest/not-live");
 
-        vat.file("Line", wad * RAY);
+        vat.file("Line", rad);
 
-        emit Lift(wad);
+        emit Lift(rad);
     }
 
     /// @notice Push surplus to the host dss
