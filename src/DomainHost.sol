@@ -375,10 +375,10 @@ abstract contract DomainHost {
         require(live == 0, "DomainHost/live");
         require(!debtReported, "DomainHost/debt-reported");
 
-        uint256 _grain = grain;
+        uint256 wad = grain + ddai;
         uint256 debtW = _divup(_debt, RAY);
-        if (_grain > debtW) {
-            uint256 wad = _grain - debtW + ddai;
+        if (wad > debtW) {
+            wad = wad - debtW;
             dai.transferFrom(address(escrow), address(this), wad);
             daiJoin.join(address(vow), wad);
         }
