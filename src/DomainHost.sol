@@ -314,9 +314,8 @@ abstract contract DomainHost {
     /// @param _grain It should be the amount of grain necessary to cover debt in the guest domain [WAD]
     function accrue(uint256 _grain) external auth returns (uint256 _wad) {
         require(vat.live() == 1, "DomainHost/vat-not-live");
-        uint256 _dsin = dsin;
-        uint256 _ddai = ddai;
-        require(_ddai > _dsin, "DomainHost/no-surplus");
+        _wad = ddai;
+        require(_wad > 0, "DomainHost/no-surplus");
 
         int256 diff = _int256(_grain) - _int256(grain);
         if (diff > 0) {
@@ -326,11 +325,9 @@ abstract contract DomainHost {
             grain = _grain;
         }
 
-        unchecked { _wad = _ddai - _dsin; }
         dai.transferFrom(address(escrow), address(this), _wad);
         daiJoin.join(address(vow), _wad);
 
-        dsin = 0;
         ddai = 0;
 
         emit Accrue(_wad);
