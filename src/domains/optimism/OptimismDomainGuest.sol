@@ -91,18 +91,6 @@ contract OptimismDomainGuest is DomainGuest {
         _lift(_lid, wad);
     }
 
-    function release() external {
-        release(glRelease);
-    }
-    function release(uint32 gasLimit) public {
-        (uint256 _rid, uint256 _burned) = _release();
-        l2messenger.sendMessage(
-            host,
-            abi.encodeWithSelector(DomainHostLike.release.selector, _rid, _burned),
-            gasLimit
-        );
-    }
-
     function surplus() external {
         surplus(glPush);
     }
@@ -139,10 +127,10 @@ contract OptimismDomainGuest is DomainGuest {
         tell(glTell);
     }
     function tell(uint32 gasLimit) public {
-        (uint256 _rid, uint256 _cure) = _tell();
+        (uint256 _rid, uint256 _debt) = _tell();
         l2messenger.sendMessage(
             host,
-            abi.encodeWithSelector(DomainHostLike.tell.selector, _rid, _cure),
+            abi.encodeWithSelector(DomainHostLike.tell.selector, _rid, _debt),
             gasLimit
         );
     }

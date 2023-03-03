@@ -92,16 +92,12 @@ contract OptimismDomainHost is DomainHost {
         lift(wad, glLift);
     }
     function lift(uint256 wad, uint32 gasLimit) public {
-        uint256 _rid = _lift(wad);
+        (uint256 _rid, uint256 rad) = _lift(wad);
         l1messenger.sendMessage(
             guest,
-            abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, wad),
+            abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, rad),
             gasLimit
         );
-    }
-
-    function release(uint256 _lid, uint256 wad) external guestOnly {
-        _release(_lid, wad);
     }
 
     function surplus(uint256 _lid, uint256 wad) external guestOnly {
@@ -128,7 +124,7 @@ contract OptimismDomainHost is DomainHost {
         cage(glCage);
     }
     function cage(uint32 gasLimit) public {
-        (uint256 _rid) = _cage();
+        uint256 _rid = _cage();
         l1messenger.sendMessage(
             guest,
             abi.encodeWithSelector(DomainGuestLike.cage.selector, _rid),
@@ -136,18 +132,18 @@ contract OptimismDomainHost is DomainHost {
         );
     }
 
-    function tell(uint256 _lid, uint256 value) external guestOnly {
-        _tell(_lid, value);
+    function tell(uint256 _lid, uint256 debt) external guestOnly {
+        _tell(_lid, debt);
     }
 
     function exit(address usr, uint256 wad) external {
         exit(usr, wad, glExit);
     }
     function exit(address usr, uint256 wad, uint32 gasLimit) public {
-        _exit(usr, wad);
+        uint256 claim = _exit(usr, wad);
         l1messenger.sendMessage(
             guest,
-            abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, wad),
+            abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, claim),
             gasLimit
         );
     }

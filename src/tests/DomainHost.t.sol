@@ -45,11 +45,8 @@ contract EmptyDomainHost is DomainHost {
         _withdraw(to, amount);
     }
     function lift(uint256 wad) external {
-        uint256 _rid = _lift(wad);
-        lastPayload = abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, wad);
-    }
-    function release(uint256 _lid, uint256 wad) external guestOnly {
-        _release(_lid, wad);
+        (uint256 _rid, uint256 rad) = _lift(wad);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.lift.selector, _rid, rad);
     }
     function surplus(uint256 _lid, uint256 wad) external guestOnly {
         _surplus(_lid, wad);
@@ -69,12 +66,12 @@ contract EmptyDomainHost is DomainHost {
         _tell(_lid, value);
     }
     function exit(address usr, uint256 wad) external {
-        _exit(usr, wad);
-        lastPayload = abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, wad);
+        uint256 claim = _exit(usr, wad);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, claim);
     }
     function exit(bytes32 usr, uint256 wad) external {
-        _exit(usr, wad);
-        lastPayload = abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, wad);
+        uint256 claim = _exit(usr, wad);
+        lastPayload = abi.encodeWithSelector(DomainGuestLike.exit.selector, usr, claim);
     }
     function undoExit(address sender, address usr, uint256 wad) external {
         _undoExit(sender, usr, wad);
@@ -117,15 +114,16 @@ contract DomainHostTest is DssTest {
     bytes32 constant SOURCE_DOMAIN = "SOME-DOMAIN-B";
     bytes32 constant TARGET_DOMAIN = "SOME-DOMAIN-C";
 
-    event Lift(uint256 wad);
+    event Lift(uint256 rad);
     event Release(uint256 wad);
     event Surplus(uint256 wad);
     event Deficit(uint256 wad);
+    event Accrue(uint256 debt);
     event Rectify(uint256 wad);
     event Cage();
     event Tell(uint256 value);
-    event Exit(address indexed sender, address indexed usr, uint256 wad);
-    event Exit(address indexed sender, bytes32 indexed usr, uint256 wad);
+    event Exit(address indexed sender, address indexed usr, uint256 wad, uint256 claim);
+    event Exit(address indexed sender, bytes32 indexed usr, uint256 wad, uint256 claim);
     event UndoExit(address indexed sender, address indexed usr, uint256 wad);
     event UndoExit(address indexed sender, bytes32 indexed usr, uint256 wad);
     event Deposit(address indexed sender, address indexed to, uint256 amount);
@@ -182,9 +180,14 @@ contract DomainHostTest is DssTest {
     function testAuth() public {
         host.deny(address(this));
 
-        bytes[] memory funcs = new bytes[](2);
+        bytes[] memory funcs = new bytes[](6);
         funcs[0] = abi.encodeWithSelector(EmptyDomainHost.lift.selector, 0);
-        funcs[1] = abi.encodeWithSelector(EmptyDomainHost.rectify.selector);
+        funcs[1] = abi.encodeWithSelector(DomainHost.release.selector, 0);
+        funcs[2] = abi.encodeWithSelector(DomainHost.accrue.selector, 0);
+        funcs[3] = abi.encodeWithSelector(EmptyDomainHost.rectify.selector);
+        TeleportGUID memory guid = TeleportGUID({sourceDomain: bytes32(""), targetDomain: bytes32(""), receiver: bytes32(""), operator: bytes32(""), amount: 0, nonce: 0, timestamp: 0});
+        funcs[4] = abi.encodeWithSelector(DomainHost.registerMint.selector, guid);
+        funcs[5] = abi.encodeWithSelector(DomainHost.settle.selector, bytes32(""), bytes32(""), 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
             assertRevert(address(host), funcs[i], "DomainHost/not-authorized");
@@ -194,14 +197,13 @@ contract DomainHostTest is DssTest {
     function testGuestOnly() public {
         host.setIsGuest(false);
 
-        bytes[] memory funcs = new bytes[](7);
-        funcs[0] = abi.encodeWithSelector(EmptyDomainHost.release.selector, 0, 0, 0);
+        bytes[] memory funcs = new bytes[](6);
+        funcs[0] = abi.encodeWithSelector(EmptyDomainHost.withdraw.selector, 0, 0, 0);
         funcs[1] = abi.encodeWithSelector(EmptyDomainHost.surplus.selector, 0, 0, 0);
         funcs[2] = abi.encodeWithSelector(EmptyDomainHost.deficit.selector, 0, 0, 0);
         funcs[3] = abi.encodeWithSelector(EmptyDomainHost.tell.selector, 0, 0, 0);
-        funcs[4] = abi.encodeWithSelector(EmptyDomainHost.withdraw.selector, 0, 0, 0);
-        funcs[5] = abi.encodeWithSelector(EmptyDomainHost.finalizeRegisterMint.selector, 0, 0, 0, 0, 0, 0, 0);
-        funcs[6] = abi.encodeWithSelector(EmptyDomainHost.finalizeSettle.selector, 0, 0, 0);
+        funcs[4] = abi.encodeWithSelector(EmptyDomainHost.finalizeRegisterMint.selector, 0, 0, 0, 0, 0, 0, 0);
+        funcs[5] = abi.encodeWithSelector(EmptyDomainHost.finalizeSettle.selector, 0, 0, 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
             assertRevert(address(host), funcs[i], "DomainHost/not-guest");
@@ -211,10 +213,11 @@ contract DomainHostTest is DssTest {
     function testVatLive() public {
         vat.cage();
 
-        bytes[] memory funcs = new bytes[](3);
+        bytes[] memory funcs = new bytes[](4);
         funcs[0] = abi.encodeWithSelector(EmptyDomainHost.lift.selector, 0, 0, 0);
-        funcs[1] = abi.encodeWithSelector(EmptyDomainHost.release.selector, 0, 0, 0);
-        funcs[2] = abi.encodeWithSelector(EmptyDomainHost.rectify.selector, 0, 0, 0);
+        funcs[1] = abi.encodeWithSelector(DomainHost.release.selector, 0);
+        funcs[2] = abi.encodeWithSelector(DomainHost.accrue.selector, 0);
+        funcs[3] = abi.encodeWithSelector(EmptyDomainHost.rectify.selector, 0, 0, 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
             assertRevert(address(host), funcs[i], "DomainHost/vat-not-live");
@@ -222,11 +225,10 @@ contract DomainHostTest is DssTest {
     }
 
     function testOrdered() public {
-        bytes[] memory funcs = new bytes[](4);
-        funcs[0] = abi.encodeWithSelector(EmptyDomainHost.release.selector, 1, 0, 0);
-        funcs[1] = abi.encodeWithSelector(EmptyDomainHost.surplus.selector, 1, 0, 0);
-        funcs[2] = abi.encodeWithSelector(EmptyDomainHost.deficit.selector, 1, 0, 0);
-        funcs[3] = abi.encodeWithSelector(EmptyDomainHost.tell.selector, 1, 0, 0);
+        bytes[] memory funcs = new bytes[](3);
+        funcs[0] = abi.encodeWithSelector(EmptyDomainHost.surplus.selector, 1, 0, 0);
+        funcs[1] = abi.encodeWithSelector(EmptyDomainHost.deficit.selector, 1, 0, 0);
+        funcs[2] = abi.encodeWithSelector(EmptyDomainHost.tell.selector, 1, 0, 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
             assertRevert(address(host), funcs[i], "DomainHost/out-of-order");
@@ -236,7 +238,7 @@ contract DomainHostTest is DssTest {
     function testLift() public {
         // Set DC to 100
         vm.expectEmit(true, true, true, true);
-        emit Lift(100 ether);
+        emit Lift(100 * RAD);
         host.lift(100 ether);
 
         (uint256 ink, uint256 art) = vat.urns(ILK, address(host));
@@ -246,7 +248,7 @@ contract DomainHostTest is DssTest {
         assertEq(host.line(), 100 * RAD);
         assertEq(host.grain(), 100 ether);
         assertEq(host.rid(), 1);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 0, 100 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 0, 100 * RAD));
 
         // Raise DC to 200
         host.lift(200 ether);
@@ -258,7 +260,7 @@ contract DomainHostTest is DssTest {
         assertEq(host.line(), 200 * RAD);
         assertEq(host.grain(), 200 ether);
         assertEq(host.rid(), 2);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 1, 200 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 1, 200 * RAD));
 
         // Lower DC back to 100 - should not remove escrowed DAI
         host.lift(100 ether);
@@ -270,7 +272,7 @@ contract DomainHostTest is DssTest {
         assertEq(host.line(), 100 * RAD);
         assertEq(host.grain(), 200 ether);
         assertEq(host.rid(), 3);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 2, 100 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 2, 100 * RAD));
     }
 
     function testRelease() public {
@@ -284,7 +286,7 @@ contract DomainHostTest is DssTest {
         assertEq(host.line(), 100 * RAD);
         assertEq(host.grain(), 100 ether);
         assertEq(host.rid(), 1);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 0, 100 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 0, 100 * RAD));
 
         // Lower DC back to 50 - should not remove escrowed DAI
         host.lift(50 ether);
@@ -297,12 +299,12 @@ contract DomainHostTest is DssTest {
         assertEq(host.grain(), 100 ether);
         assertEq(host.rid(), 2);
         assertEq(host.lid(), 0);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 1, 50 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 1, 50 * RAD));
 
         // Remote domain triggers release at a later time
         vm.expectEmit(true, true, true, true);
         emit Release(50 ether);
-        host.release(0, 50 ether);
+        host.release(50 ether);
 
         (ink, art) = vat.urns(ILK, address(host));
         assertEq(ink, 50 ether);
@@ -310,8 +312,7 @@ contract DomainHostTest is DssTest {
         assertEq(dai.balanceOf(address(escrow)), 50 ether);
         assertEq(host.line(), 50 * RAD);
         assertEq(host.grain(), 50 ether);
-        assertEq(host.lid(), 1);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 1, 50 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 1, 50 * RAD));
     }
 
     function testReleasePermissionlessRepay() public {
@@ -333,7 +334,7 @@ contract DomainHostTest is DssTest {
         assertEq(vat.dai(vow), 0);
 
         // Should not block releasing all DAI
-        host.release(0, 100 ether);
+        host.release(100 ether);
 
         (ink, art) = vat.urns(ILK, address(host));
         assertEq(ink, 0);
@@ -355,9 +356,9 @@ contract DomainHostTest is DssTest {
         assertEq(host.line(), 50 * RAD);
         assertEq(host.grain(), 125 ether);
         assertEq(host.rid(), 4);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 3, 50 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 3, 50 * RAD));
 
-        host.release(0, 50 ether);   // First release comes in
+        host.release(50 ether);   // First release comes in
 
         (ink, art) = vat.urns(ILK, address(host));
         assertEq(ink, 75 ether);
@@ -365,11 +366,10 @@ contract DomainHostTest is DssTest {
         assertEq(dai.balanceOf(address(escrow)), 75 ether);
         assertEq(host.line(), 50 * RAD);
         assertEq(host.grain(), 75 ether);
-        assertEq(host.lid(), 1);
         assertEq(host.rid(), 4);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 3, 50 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 3, 50 * RAD));
 
-        host.release(1, 25 ether);   // Second release comes in
+        host.release(25 ether);   // Second release comes in
 
         (ink, art) = vat.urns(ILK, address(host));
         assertEq(ink, 50 ether);
@@ -377,9 +377,8 @@ contract DomainHostTest is DssTest {
         assertEq(dai.balanceOf(address(escrow)), 50 ether);
         assertEq(host.line(), 50 * RAD);
         assertEq(host.grain(), 50 ether);
-        assertEq(host.lid(), 2);
         assertEq(host.rid(), 4);
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 3, 50 * WAD));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.lift.selector, 3, 50 * RAD));
     }
 
     function testPushSurplus() public {
@@ -389,17 +388,56 @@ contract DomainHostTest is DssTest {
         assertEq(vat.dai(vow), 0);
         assertEq(dai.balanceOf(address(escrow)), 100 ether);
         assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 0);
         assertEq(host.lid(), 0);
 
         vm.expectEmit(true, true, true, true);
         emit Surplus(100 ether);
         host.surplus(0, 100 ether);
 
+        assertEq(vat.dai(vow), 0);
+        assertEq(dai.balanceOf(address(escrow)), 100 ether);
+        assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 100 ether);
+        assertEq(host.lid(), 1);
+
+        vm.expectEmit(true, true, true, true);
+        emit Accrue(100 ether);
+        host.accrue(0);
         assertEq(vat.dai(vow), 100 * RAD);
         assertEq(dai.balanceOf(address(escrow)), 0);
         assertEq(host.dsin(), 0);
-        assertEq(host.lid(), 1);
+        assertEq(host.ddai(), 0);
     }
+
+    function testPushSurplusGrainNeededEdgeCase() public {
+        assertEq(vat.dai(vow), 0);
+        assertEq(dai.balanceOf(address(escrow)), 0 ether);
+        assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 0);
+        assertEq(host.lid(), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Surplus(100 ether);
+        host.surplus(0, 100 ether);
+
+        assertEq(vat.dai(vow), 0);
+        assertEq(dai.balanceOf(address(escrow)), 0);
+        assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 100 ether);
+        assertEq(host.lid(), 1);
+
+        vm.expectRevert();
+        host.accrue(0);
+        vm.expectEmit(true, true, true, true);
+        emit Accrue(100 ether);
+        host.accrue(100 ether);
+        assertEq(vat.dai(vow), 100 * RAD);
+        assertEq(dai.balanceOf(address(escrow)), 0);
+        assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 0);
+    }
+
 
     function testPushDeficit() public {
         assertEq(host.dsin(), 0);
@@ -428,7 +466,7 @@ contract DomainHostTest is DssTest {
     }
 
     function testRectifyNoSin() public {
-        vm.expectRevert("DomainHost/no-sin");
+        vm.expectRevert("DomainHost/no-deficit");
         host.rectify();
     }
 
@@ -470,15 +508,18 @@ contract DomainHostTest is DssTest {
         host.lift(100 ether);
         host.cage();
 
-        assertEq(host.cure(), 0);
-        assertTrue(!host.cureReported());
+        uint256 initialVatDai = vat.dai(vow);
+        uint256 initialHostGrain = host.grain();
+        assertTrue(!host.debtReported());
 
         vm.expectEmit(true, true, true, true);
         emit Tell(100 * RAD);
         host.tell(0, 100 * RAD);
 
-        assertEq(host.cure(), 100 * RAD);
-        assertTrue(host.cureReported());
+        assertEq(vat.dai(vow), initialVatDai + 100 * RAD - initialHostGrain * RAY);
+        assertEq(host.grain(), 100 ether);
+        assertTrue(host.debtReported());
+        assertEq(host.debt(), 100 * RAD);
     }
 
     function testTellNotCaged() public {
@@ -488,63 +529,57 @@ contract DomainHostTest is DssTest {
         host.tell(0, 100 * RAD);
     }
 
-    function testTellCureBadValue() public {
-        host.lift(50 ether);
-        host.cage();
-
-        vm.expectRevert("DomainHost/cure-bad-value");
-        host.tell(0, 100 * RAD);
-    }
-
     function testTellTwice() public {
         host.lift(100 ether);
         host.cage();
         host.tell(0, 100 * RAD);
 
-        vm.expectRevert("DomainHost/cure-reported");
+        vm.expectRevert("DomainHost/debt-reported");
         host.tell(1, 50 * RAD);
     }
 
     function testExit() public {
         // Setup initial conditions
-        host.lift(100 ether);       // DC raised to 100
+        host.lift(100 ether); // DC raised to 100
         vat.cage();
         host.cage();
-        host.tell(0, 70 * RAD);        // Guest later reports on 30 debt is actually used
+        host.tell(0, 70 * RAD); // Simulates guest reported a final 70 DAI debt
 
         // Simulate user getting some gems for this ilk (normally handled by end)
         vat.slip(ILK, address(this), 50 ether);
 
+        uint256 claim = 50 ether * (70 * RAD / 100 ether);
         vm.expectEmit(true, true, true, true);
-        emit Exit(address(this), address(123), 50 ether);
+        emit Exit(address(this), address(123), 50 ether, claim);
         host.exit(address(123), 50 ether);
 
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.exit.selector, address(123), 50 ether));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.exit.selector, address(123), claim));
     }
 
     function testExitBytes32() public {
         // Setup initial conditions
-        host.lift(100 ether);       // DC raised to 100
+        host.lift(100 ether); // DC raised to 100
         vat.cage();
         host.cage();
-        host.tell(0, 70 * RAD);        // Guest later reports on 30 debt is actually used
+        host.tell(0, 70 * RAD); // Simulates guest reported a final 70 DAI debt
 
         // Simulate user getting some gems for this ilk (normally handled by end)
         vat.slip(ILK, address(this), 50 ether);
 
+        uint256 claim = 50 ether * (70 * RAD / 100 ether);
         vm.expectEmit(true, true, true, true);
-        emit Exit(address(this), bytes32(uint256(123)), 50 ether);
+        emit Exit(address(this), bytes32(uint256(123)), 50 ether, claim);
         host.exit(bytes32(uint256(123)), 50 ether);
 
-        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.exit.selector, address(123), 50 ether));
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.exit.selector, address(123), claim));
     }
 
     function testUndoExit() public {
         // Setup initial conditions
-        host.lift(100 ether);       // DC raised to 100
+        host.lift(100 ether); // DC raised to 100
         vat.cage();
         host.cage();
-        host.tell(0, 70 * RAD);        // Guest later reports on 30 debt is actually used
+        host.tell(0, 70 * RAD); // Simulates guest reported a final 70 DAI debt
 
         // Simulate user getting some gems for this ilk (normally handled by end)
         vat.slip(ILK, address(this), 50 ether);
@@ -564,10 +599,10 @@ contract DomainHostTest is DssTest {
 
     function testUndoExitBytes32() public {
         // Setup initial conditions
-        host.lift(100 ether);       // DC raised to 100
+        host.lift(100 ether); // DC raised to 100
         vat.cage();
         host.cage();
-        host.tell(0, 70 * RAD);        // Guest later reports on 30 debt is actually used
+        host.tell(0, 70 * RAD); // Simulates guest reported a final 70 DAI debt
 
         // Simulate user getting some gems for this ilk (normally handled by end)
         vat.slip(ILK, address(this), 50 ether);

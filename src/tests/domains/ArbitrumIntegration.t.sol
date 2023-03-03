@@ -81,10 +81,6 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
         ArbitrumDomainHost(address(host)).initializeSettle{value:1 ether}(sourceDomain, targetDomain, 1 ether, 0);
     }
 
-    function guestRelease() internal virtual override {
-        ArbitrumDomainGuest(address(guest)).release();
-    }
-
     function guestSurplus() internal virtual override {
         ArbitrumDomainGuest(address(guest)).surplus();
     }
