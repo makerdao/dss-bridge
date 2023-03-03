@@ -30,6 +30,11 @@ This will back the pre-minted DAI by `vat.gems` that represent shares to the rem
 
 This will trigger a call to `DomainGuest.lift(uint256 _lid, uint256 rad)` with `rad == wad * RAY`.
 
+### `DomainHost.release(uint256 wad)`
+
+Release a certain amount of pre-minted DAI (take out from escrow and repay debt). This is an authed function that should be executed by governance after a debt ceiling reduction to the subdomain. Once governance has verified that the sub domain has acknowledged the reduction and checked how much has already been lent, then will be able to define the param for this function.
+The amount of `grain` should end up always being the max between the L2 Line and the L2 circulating supply from loans.
+
 ### `DomainGuest.surplus()`
 
 Permissionless function which will push a surplus to the host domain if the delta is greater than the dust limit. It will exit the DAI, send it across the token bridge leaving it ready for being realized by governance.
