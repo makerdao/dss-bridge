@@ -54,8 +54,8 @@ contract EmptyDomainHost is DomainHost {
     function deficit(uint256 _lid, uint256 wad) external guestOnly {
         _deficit(_lid, wad);
     }
-    function rectify() external {
-        (uint256 _rid, uint256 _wad) = _rectify();
+    function rectify(uint256 _maxAmount) external {
+        (uint256 _rid, uint256 _wad) = _rectify(_maxAmount);
         lastPayload = abi.encodeWithSelector(DomainGuestLike.rectify.selector, _rid, _wad);
     }
     function cage() external {
@@ -181,10 +181,10 @@ contract DomainHostTest is DssTest {
         host.deny(address(this));
 
         bytes[] memory funcs = new bytes[](6);
-        funcs[0] = abi.encodeWithSelector(EmptyDomainHost.lift.selector, 0);
-        funcs[1] = abi.encodeWithSelector(DomainHost.release.selector, 0);
-        funcs[2] = abi.encodeWithSelector(DomainHost.accrue.selector, 0);
-        funcs[3] = abi.encodeWithSelector(EmptyDomainHost.rectify.selector);
+        funcs[0] = abi.encodeWithSelector(EmptyDomainHost.lift.selector, 0, 0, 0);
+        funcs[1] = abi.encodeWithSelector(DomainHost.release.selector, 0, 0, 0);
+        funcs[2] = abi.encodeWithSelector(DomainHost.accrue.selector, 0, 0, 0);
+        funcs[3] = abi.encodeWithSelector(EmptyDomainHost.rectify.selector, 0, 0, 0);
         TeleportGUID memory guid = TeleportGUID({sourceDomain: bytes32(""), targetDomain: bytes32(""), receiver: bytes32(""), operator: bytes32(""), amount: 0, nonce: 0, timestamp: 0});
         funcs[4] = abi.encodeWithSelector(DomainHost.registerMint.selector, guid);
         funcs[5] = abi.encodeWithSelector(DomainHost.settle.selector, bytes32(""), bytes32(""), 0);
@@ -215,8 +215,8 @@ contract DomainHostTest is DssTest {
 
         bytes[] memory funcs = new bytes[](4);
         funcs[0] = abi.encodeWithSelector(EmptyDomainHost.lift.selector, 0, 0, 0);
-        funcs[1] = abi.encodeWithSelector(DomainHost.release.selector, 0);
-        funcs[2] = abi.encodeWithSelector(DomainHost.accrue.selector, 0);
+        funcs[1] = abi.encodeWithSelector(DomainHost.release.selector, 0, 0, 0);
+        funcs[2] = abi.encodeWithSelector(DomainHost.accrue.selector, 0, 0, 0);
         funcs[3] = abi.encodeWithSelector(EmptyDomainHost.rectify.selector, 0, 0, 0);
 
         for (uint256 i = 0; i < funcs.length; i++) {
@@ -403,11 +403,40 @@ contract DomainHostTest is DssTest {
 
         vm.expectEmit(true, true, true, true);
         emit Accrue(100 ether);
-        host.accrue(0);
+        host.accrue(0, type(uint256).max);
         assertEq(vat.dai(vow), 100 * RAD);
         assertEq(dai.balanceOf(address(escrow)), 0);
         assertEq(host.dsin(), 0);
         assertEq(host.ddai(), 0);
+    }
+
+    function testPushSurplusPartial() public {
+        vat.suck(address(123), address(this), 100 * RAD);
+        daiJoin.exit(address(escrow), 100 ether);
+
+        assertEq(vat.dai(vow), 0);
+        assertEq(dai.balanceOf(address(escrow)), 100 ether);
+        assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 0);
+        assertEq(host.lid(), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Surplus(100 ether);
+        host.surplus(0, 100 ether);
+
+        assertEq(vat.dai(vow), 0);
+        assertEq(dai.balanceOf(address(escrow)), 100 ether);
+        assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 100 ether);
+        assertEq(host.lid(), 1);
+
+        vm.expectEmit(true, true, true, true);
+        emit Accrue(40 ether);
+        host.accrue(0, 40 ether);
+        assertEq(vat.dai(vow), 40 * RAD);
+        assertEq(dai.balanceOf(address(escrow)), 60 ether);
+        assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 60 ether);
     }
 
     function testPushSurplusGrainNeededEdgeCase() public {
@@ -428,16 +457,43 @@ contract DomainHostTest is DssTest {
         assertEq(host.lid(), 1);
 
         vm.expectRevert();
-        host.accrue(0);
+        host.accrue(0, type(uint256).max);
         vm.expectEmit(true, true, true, true);
         emit Accrue(100 ether);
-        host.accrue(100 ether);
+        host.accrue(100 ether, type(uint256).max);
         assertEq(vat.dai(vow), 100 * RAD);
         assertEq(dai.balanceOf(address(escrow)), 0);
         assertEq(host.dsin(), 0);
         assertEq(host.ddai(), 0);
     }
 
+    function testPushSurplusPartialGrainNeededEdgeCase() public {
+        assertEq(vat.dai(vow), 0);
+        assertEq(dai.balanceOf(address(escrow)), 0 ether);
+        assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 0);
+        assertEq(host.lid(), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Surplus(100 ether);
+        host.surplus(0, 100 ether);
+
+        assertEq(vat.dai(vow), 0);
+        assertEq(dai.balanceOf(address(escrow)), 0);
+        assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 100 ether);
+        assertEq(host.lid(), 1);
+
+        vm.expectRevert();
+        host.accrue(0, 40 ether);
+        vm.expectEmit(true, true, true, true);
+        emit Accrue(40 ether);
+        host.accrue(100 ether, 40 ether);
+        assertEq(vat.dai(vow), 40 * RAD);
+        assertEq(dai.balanceOf(address(escrow)), 60 ether);
+        assertEq(host.dsin(), 0);
+        assertEq(host.ddai(), 60 ether);
+    }
 
     function testPushDeficit() public {
         assertEq(host.dsin(), 0);
@@ -449,7 +505,7 @@ contract DomainHostTest is DssTest {
         assertEq(host.dsin(), 100 ether);
     }
 
-    function testRectify() public {
+    function testRectifyAll() public {
         host.deficit(0, 100 ether);
 
         assertEq(vat.sin(vow), 0);
@@ -458,16 +514,34 @@ contract DomainHostTest is DssTest {
 
         vm.expectEmit(true, true, true, true);
         emit Rectify(100 ether);
-        host.rectify();
+        host.rectify(type(uint256).max);
 
         assertEq(vat.sin(vow), 100 * RAD);
         assertEq(dai.balanceOf(address(escrow)), 100 ether);
+        assertEq(host.dsin(), 0);
         assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.rectify.selector, 0, 100 ether));
+    }
+
+    function testRectifyPartial() public {
+        host.deficit(0, 100 ether);
+
+        assertEq(vat.sin(vow), 0);
+        assertEq(dai.balanceOf(address(escrow)), 0);
+        assertEq(host.dsin(), 100 ether);
+
+        vm.expectEmit(true, true, true, true);
+        emit Rectify(20 ether);
+        host.rectify(20 ether);
+
+        assertEq(vat.sin(vow), 20 * RAD);
+        assertEq(dai.balanceOf(address(escrow)), 20 ether);
+        assertEq(host.dsin(), 80 ether);
+        assertEq(host.lastPayload(), abi.encodeWithSelector(DomainGuestLike.rectify.selector, 0, 20 ether));
     }
 
     function testRectifyNoSin() public {
         vm.expectRevert("DomainHost/no-deficit");
-        host.rectify();
+        host.rectify(0);
     }
 
     function testCage() public {

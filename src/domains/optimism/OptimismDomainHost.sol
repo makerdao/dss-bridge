@@ -108,11 +108,11 @@ contract OptimismDomainHost is DomainHost {
         _deficit(_lid, wad);
     }
 
-    function rectify() external {
-        rectify(glRectify);
+    function rectify(uint256 _maxAmount) external {
+        rectify(_maxAmount, glRectify);
     }
-    function rectify(uint32 gasLimit) public {
-        (uint256 _rid, uint256 _wad) = _rectify();
+    function rectify(uint256 _maxAmount, uint32 gasLimit) public {
+        (uint256 _rid, uint256 _wad) = _rectify(_maxAmount);
         l1messenger.sendMessage(
             guest,
             abi.encodeWithSelector(DomainGuestLike.rectify.selector, _rid, _wad),
