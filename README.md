@@ -47,13 +47,13 @@ Permissionless function which will push a deficit to the host domain if the delt
 
 This will trigger a call to `DomainHost.deficit(uint256 _lid, uint256 wad)` with `wad >= dust`.
 
-### `DomainHost.accrue(uint256 _grain)`
+### `DomainHost.accrue(uint256 _grain, uint256 _maxAmount)`
 
-Authed function which will effectively move the accounted surplus to the buffer. It will generate new pre minted DAI if necessary to cover remote's debt (it is up to governance to pass the correct value).
+Authed function which will effectively move the accounted surplus to the buffer. It will generate new pre minted DAI if necessary to cover remote's debt (it is up to governance to pass the correct value). A `_maxAmount` should be specified to prevent front-running from malicious domain.
 
-### `DomainHost.rectify()`
+### `DomainHost.rectify(uint256 _maxAmount)`
 
-Suck some DAI from the surplus buffer and send it to the Guest to cover the bad debt.
+Suck some DAI from the surplus buffer and send it to the Guest to cover the bad debt. A `_maxAmount` should be specified to prevent front-running from malicious domain.
 
 This will trigger a call to `DomainGuest.rectify(uint256 _lid, uint256 wad)`.
 

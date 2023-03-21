@@ -169,11 +169,12 @@ contract ArbitrumDomainHost is DomainHost {
     }
 
     function rectify(
+        uint256 _maxAmount,
         uint256 maxSubmissionCost,
         uint256 maxGas,
         uint256 gasPriceBid
     ) public payable {
-        (uint256 _rid, uint256 _wad) = _rectify();
+        (uint256 _rid, uint256 _wad) = _rectify(_maxAmount);
         inbox.createRetryableTicket{value: msg.value}(
             guest,
             0, // we always assume that l2CallValue = 0
@@ -186,10 +187,12 @@ contract ArbitrumDomainHost is DomainHost {
         );
     }
     function rectify(
+        uint256 _maxAmount,
         uint256 maxSubmissionCost,
         uint256 gasPriceBid
     ) external payable {
         rectify(
+            _maxAmount,
             maxSubmissionCost,
             glLift,
             gasPriceBid

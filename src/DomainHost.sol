@@ -312,10 +312,18 @@ abstract contract DomainHost {
     /// @notice Governance is accruing surplus
     /// @dev This is a potentially dangerous operation as a malicious domain can trigger unintended consequences due to fake surplus
     /// @param _grain It should be the amount of grain necessary to cover debt in the guest domain [WAD]
-    function accrue(uint256 _grain) external auth returns (uint256 _wad) {
+    /// @param _maxAmount The maximum amount to send to the Surplus Buffer. Used to limit front-running from the 
+    ///                   remote domain and allow more flexiblity with how much to send to the Surplus Buffer. [WAD]
+    function accrue(uint256 _grain, uint256 _maxAmount) external auth returns (uint256 _wad) {
         require(vat.live() == 1, "DomainHost/vat-not-live");
         _wad = ddai;
         require(_wad > 0, "DomainHost/no-surplus");
+        if (_wad > _maxAmount) {
+            unchecked { ddai = _wad - _maxAmount; }
+            _wad = _maxAmount;
+        } else {
+            ddai = 0;
+        }
 
         int256 diff = _int256(_grain) - _int256(grain);
         if (diff > 0) {
@@ -328,25 +336,30 @@ abstract contract DomainHost {
         dai.transferFrom(address(escrow), address(this), _wad);
         daiJoin.join(address(vow), _wad);
 
-        ddai = 0;
-
         emit Accrue(_wad);
     }
 
     /// @notice Move bad debt from the remote domain into the local vow
     /// @dev This is a potentially dangerous operation as a malicious domain can drain the entire surplus buffer
     /// Because of this we require an authed party to perform this operation
-    function _rectify() internal auth returns (uint256 _rid, uint256 _wad) {
+    /// @param _maxAmount The maximum amount to take from the Surplus Buffer. Used to limit front-running from the 
+    ///                   remote domain and allow more flexiblity with how much to take from the Surplus Buffer. [WAD]
+    function _rectify(uint256 _maxAmount) internal auth returns (uint256 _rid, uint256 _wad) {
         require(vat.live() == 1, "DomainHost/vat-not-live");
         uint256 _dsin = dsin;
         uint256 _ddai = ddai;
         require(_dsin > _ddai, "DomainHost/no-deficit");
 
         unchecked { _wad = _dsin - _ddai; }
+        if (_wad > _maxAmount) {
+            unchecked { dsin = _wad - _maxAmount; }
+            _wad = _maxAmount;
+        } else {
+            dsin = 0;
+        }
+        ddai = 0;
         vat.suck(vow, address(this), _wad * RAY);
         daiJoin.exit(address(escrow), _wad);
-        dsin = 0;
-        ddai = 0;
 
         _rid = rid++;
 

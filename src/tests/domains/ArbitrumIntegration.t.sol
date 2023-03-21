@@ -57,8 +57,8 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
         ArbitrumDomainHost(address(host)).lift{value:1 ether}(wad, 1 ether, 0);
     }
 
-    function hostRectify() internal virtual override {
-        ArbitrumDomainHost(address(host)).rectify{value:1 ether}(1 ether, 0);
+    function hostRectify(uint256 _maxAmount) internal virtual override {
+        ArbitrumDomainHost(address(host)).rectify{value:1 ether}(_maxAmount, 1 ether, 0);
     }
 
     function hostCage() internal virtual override {

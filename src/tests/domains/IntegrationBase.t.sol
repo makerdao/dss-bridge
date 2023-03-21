@@ -208,7 +208,7 @@ abstract contract IntegrationBaseTest is DssTest {
     }
 
     function hostLift(uint256 wad) internal virtual;
-    function hostRectify() internal virtual;
+    function hostRectify(uint256 _maxAmount) internal virtual;
     function hostCage() internal virtual;
     function hostExit(address usr, uint256 wad) internal virtual;
     function hostDeposit(address to, uint256 amount) internal virtual;
@@ -339,7 +339,7 @@ abstract contract IntegrationBaseTest is DssTest {
 
         assertEq(host.ddai(), 30 ether);
 
-        host.accrue(0);
+        host.accrue(0, type(uint256).max);
 
         assertEq(dss.vat.dai(address(dss.vow)), vowDai + 30 * RAD);
         assertEq(dss.vat.sin(address(dss.vow)), vowSin);
@@ -377,7 +377,7 @@ abstract contract IntegrationBaseTest is DssTest {
         assertEq(Vat(address(rdss.vat)).surf(), existingSurf);
         hostDomain.selectFork();
 
-        hostRectify();
+        hostRectify(type(uint256).max);
         assertEq(dss.vat.dai(address(dss.vow)), vowDai);
         assertEq(dss.vat.sin(address(dss.vow)), vowSin + 30 * RAD);
         assertEq(dss.dai.balanceOf(escrow), escrowDai + 130 ether);
@@ -764,7 +764,7 @@ abstract contract IntegrationBaseTest is DssTest {
         guestDomain.relayToHost(true);
         assertEq(host.ddai(), 2.85 ether);
 
-        host.accrue(97.85 ether);
+        host.accrue(97.85 ether, type(uint256).max);
 
         assertEq(dss.vat.dai(address(dss.vow)), 2.85 * 10**45);
         assertEq(dss.dai.balanceOf(address(escrow)), 117.15 ether);
@@ -939,7 +939,7 @@ abstract contract IntegrationBaseTest is DssTest {
         guestDomain.relayToHost(true);
         assertEq(host.ddai(), 9.5 ether);
 
-        host.accrue(104.5 ether);
+        host.accrue(104.5 ether, type(uint256).max);
 
         assertEq(dss.vat.dai(address(dss.vow)), 9.5 * 10**45);
         assertEq(dss.dai.balanceOf(address(escrow)), 115 ether);
@@ -1134,7 +1134,7 @@ abstract contract IntegrationBaseTest is DssTest {
 
         assertEq(host.dsin(), 50 ether);
 
-        hostRectify();
+        hostRectify(type(uint256).max);
 
         assertEq(dss.vat.debt(), existingVatDebt + 150 * RAD);
         assertEq(dss.dai.balanceOf(address(escrow)), 170 ether);
@@ -1204,7 +1204,7 @@ abstract contract IntegrationBaseTest is DssTest {
 
         assertEq(host.dsin(), 50 ether);
 
-        hostRectify();
+        hostRectify(type(uint256).max);
 
         assertEq(dss.vat.debt(), existingVatDebt + 150 * RAD);
         assertEq(dss.dai.balanceOf(address(escrow)), 170 ether);

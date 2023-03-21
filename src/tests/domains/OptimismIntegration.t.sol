@@ -69,8 +69,8 @@ contract OptimismIntegrationTest is IntegrationBaseTest {
         OptimismDomainHost(address(host)).lift(wad);
     }
 
-    function hostRectify() internal virtual override {
-        OptimismDomainHost(address(host)).rectify();
+    function hostRectify(uint256 _maxAmount) internal virtual override {
+        OptimismDomainHost(address(host)).rectify(_maxAmount);
     }
 
     function hostCage() internal virtual override {
