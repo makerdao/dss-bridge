@@ -193,7 +193,7 @@ abstract contract DomainGuest {
     /// @param to The address to send the DAI to on the remote domain
     /// @param amount The amount of DAI to withdraw [WAD]
     function _withdraw(address to, uint256 amount) internal {
-        require(dai.transferFrom(msg.sender, address(this), amount), "DomainGuest/transfer-failed");
+        dai.transferFrom(msg.sender, address(this), amount);
         daiJoin.join(address(this), amount);
         vat.swell(address(this), -_int256(amount * RAY));
 
