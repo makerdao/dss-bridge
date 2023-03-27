@@ -180,7 +180,7 @@ abstract contract DomainHost {
     /// @param to The address to send the DAI to on the remote domain
     /// @param amount The amount of DAI to deposit [WAD]
     function _deposit(address to, uint256 amount) internal {
-        require(dai.transferFrom(msg.sender, escrow, amount), "DomainHost/transfer-failed");
+        dai.transferFrom(msg.sender, escrow, amount);
 
         emit Deposit(msg.sender, to, amount);
     }
@@ -189,7 +189,7 @@ abstract contract DomainHost {
     /// @param to The address to send the DAI to on the remote domain
     /// @param amount The amount of DAI to deposit [WAD]
     function _deposit(bytes32 to, uint256 amount) internal {
-        require(dai.transferFrom(msg.sender, escrow, amount), "DomainHost/transfer-failed");
+        dai.transferFrom(msg.sender, escrow, amount);
 
         emit Deposit(msg.sender, to, amount);
     }
@@ -204,7 +204,7 @@ abstract contract DomainHost {
     /// @param to The address the DAI was supposed to be sent to
     /// @param amount The amount of DAI that was attempted to deposit [WAD]
     function _undoDeposit(address sender, address to, uint256 amount) internal {
-        require(dai.transferFrom(escrow, sender, amount), "DomainHost/transfer-failed");
+        dai.transferFrom(escrow, sender, amount);
 
         emit UndoDeposit(sender, to, amount);
     }
@@ -219,7 +219,7 @@ abstract contract DomainHost {
     /// @param to The address the DAI was supposed to be sent to
     /// @param amount The amount of DAI that was attempted to deposit [WAD]
     function _undoDeposit(address sender, bytes32 to, uint256 amount) internal {
-        require(dai.transferFrom(escrow, sender, amount), "DomainHost/transfer-failed");
+        dai.transferFrom(escrow, sender, amount);
 
         emit UndoDeposit(sender, to, amount);
     }
@@ -228,7 +228,7 @@ abstract contract DomainHost {
     /// @param to The address to send the DAI to on the local domain
     /// @param amount The amount of DAI to withdraw [WAD]
     function _withdraw(address to, uint256 amount) internal {
-        require(dai.transferFrom(escrow, to, amount), "DomainHost/transfer-failed");
+        dai.transferFrom(escrow, to, amount);
 
         emit Withdraw(to, amount);
     }
@@ -280,7 +280,7 @@ abstract contract DomainHost {
             vat.grab(ilk, address(this), address(this), _vow, 0, _int256(diff));
         }
 
-        require(dai.transferFrom(escrow, address(this), wad), "DomainHost/transfer-failed");
+        dai.transferFrom(escrow, address(this), wad);
         daiJoin.join(address(this), wad);
         int256 repay = -_int256(wad);
         vat.frob(ilk, address(this), address(this), address(this), repay, repay);
@@ -475,7 +475,7 @@ abstract contract DomainHost {
     }
 
     function settle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) external auth {
-        require(dai.transfer(escrow, amount), "DomainHost/transfer-failed");
+        dai.transfer(escrow, amount);
         settlements[sourceDomain][targetDomain] += amount;
 
         emit Settle(sourceDomain, targetDomain, amount);
@@ -494,7 +494,7 @@ abstract contract DomainHost {
         emit UndoInitializeSettle(sourceDomain, targetDomain, amount);
     }
     function _finalizeSettle(bytes32 sourceDomain, bytes32 targetDomain, uint256 amount) internal {
-        require(dai.transferFrom(escrow, address(this), amount), "DomainHost/transfer-failed");
+        dai.transferFrom(escrow, address(this), amount);
         router.settle(sourceDomain, targetDomain, amount);
 
         emit FinalizeSettle(sourceDomain, targetDomain, amount);
