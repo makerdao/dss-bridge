@@ -93,6 +93,7 @@ abstract contract DomainHost {
     // --- Events ---
     event Rely(address indexed usr);
     event Deny(address indexed usr);
+    event File(bytes32 indexed what, uint256 data);
     event File(bytes32 indexed what, address data);
     event Lift(uint256 rad);
     event Release(uint256 wad);
@@ -170,6 +171,17 @@ abstract contract DomainHost {
 
     function file(bytes32 what, address data) external auth {
         if (what == "vow") vow = data;
+        else revert("DomainHost/file-unrecognized-param");
+        emit File(what, data);
+    }
+
+    function file(bytes32 what, uint256 data) external auth {
+        if (what == "lid") lid = data;
+        else if (what == "rid") rid = data;
+        else if (what == "line") line = data;
+        else if (what == "grain") grain = data;
+        else if (what == "ddai") ddai = data;
+        else if (what == "dsin") dsin = data;
         else revert("DomainHost/file-unrecognized-param");
         emit File(what, data);
     }

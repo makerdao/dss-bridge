@@ -175,6 +175,14 @@ contract DomainHostTest is DssTest {
 
     function testFile() public {
         checkFileAddress(address(host), "DomainHost", ["vow"]);
+        checkFileUint(address(host), "DomainHost", [
+            "lid",
+            "rid",
+            "line",
+            "grain",
+            "ddai",
+            "dsin"
+        ]);
     }
 
     function testAuth() public {

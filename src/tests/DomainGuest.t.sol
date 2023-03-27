@@ -146,7 +146,12 @@ contract DomainGuestTest is DssTest {
 
     function testFile() public {
         checkFileAddress(address(guest), "DomainGuest", ["end"]);
-        checkFileUint(address(guest), "DomainGuest", ["dust"]);
+        checkFileUint(address(guest), "DomainGuest", [
+            "lid",
+            "rid",
+            "dsin",
+            "dust"
+        ]);
     }
 
     function testHostOnly() public {

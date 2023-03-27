@@ -41,13 +41,13 @@ abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
 
     function initHost() internal virtual override {
         ArbitrumDomainHost _host = ArbitrumDomainHost(address(host));
-        _host.file("glLift", 1_000_000);
-        _host.file("glRectify", 1_000_000);
-        _host.file("glCage", 1_000_000);
-        _host.file("glExit", 1_000_000);
-        _host.file("glDeposit", 1_000_000);
-        _host.file("glInitializeRegisterMint", 1_000_000);
-        _host.file("glInitializeSettle", 1_000_000);
+        _host.filegl("glLift", 1_000_000);
+        _host.filegl("glRectify", 1_000_000);
+        _host.filegl("glCage", 1_000_000);
+        _host.filegl("glExit", 1_000_000);
+        _host.filegl("glDeposit", 1_000_000);
+        _host.filegl("glInitializeRegisterMint", 1_000_000);
+        _host.filegl("glInitializeSettle", 1_000_000);
     }
 
     function initGuest() internal virtual override {
