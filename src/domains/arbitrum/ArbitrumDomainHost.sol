@@ -58,7 +58,7 @@ contract ArbitrumDomainHost is DomainHost {
     uint256 public glInitializeSettle;
 
     // --- Events ---
-    event File(bytes32 indexed what, uint256 data);
+    event FileGL(bytes32 indexed what, uint256 data);
 
     constructor(
         bytes32 _ilk,
@@ -72,7 +72,7 @@ contract ArbitrumDomainHost is DomainHost {
         guest = _guest;
     }
 
-    function file(bytes32 what, uint256 data) external auth {
+    function filegl(bytes32 what, uint256 data) external auth {
         if (what == "glLift") glLift = data;
         else if (what == "glRectify") glRectify = data;
         else if (what == "glCage") glCage = data;
@@ -81,7 +81,7 @@ contract ArbitrumDomainHost is DomainHost {
         else if (what == "glInitializeRegisterMint") glInitializeRegisterMint = data;
         else if (what == "glInitializeSettle") glInitializeSettle = data;
         else revert("ArbitrumDomainHost/file-unrecognized-param");
-        emit File(what, data);
+        emit FileGL(what, data);
     }
 
     modifier guestOnly {

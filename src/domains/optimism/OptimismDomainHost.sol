@@ -41,7 +41,7 @@ contract OptimismDomainHost is DomainHost {
     uint32 public glInitializeSettle;
 
     // --- Events ---
-    event File(bytes32 indexed what, uint32 data);
+    event FileGL(bytes32 indexed what, uint32 data);
 
     constructor(
         bytes32 _ilk,
@@ -55,7 +55,7 @@ contract OptimismDomainHost is DomainHost {
         guest = _guest;
     }
 
-    function file(bytes32 what, uint32 data) external auth {
+    function filegl(bytes32 what, uint32 data) external auth {
         if (what == "glLift") glLift = data;
         else if (what == "glRectify") glRectify = data;
         else if (what == "glCage") glCage = data;
@@ -64,7 +64,7 @@ contract OptimismDomainHost is DomainHost {
         else if (what == "glInitializeRegisterMint") glInitializeRegisterMint = data;
         else if (what == "glInitializeSettle") glInitializeSettle = data;
         else revert("OptimismDomainHost/file-unrecognized-param");
-        emit File(what, data);
+        emit FileGL(what, data);
     }
 
     modifier guestOnly {

@@ -172,7 +172,10 @@ abstract contract DomainGuest {
     }
 
     function file(bytes32 what, uint256 data) external auth {
-        if (what == "dust") dust = data;
+        if (what == "lid") lid = data;
+        else if (what == "rid") rid = data;
+        else if (what == "dsin") dsin = data;
+        else if (what == "dust") dust = data;
         else revert("DomainGuest/file-unrecognized-param");
         emit File(what, data);
     }
