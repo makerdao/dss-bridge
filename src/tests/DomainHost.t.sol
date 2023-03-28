@@ -183,6 +183,10 @@ contract DomainHostTest is DssTest {
             "ddai",
             "dsin"
         ]);
+        // Hit the limit so broke out into new test
+        checkFileUint(address(host), "DomainHost", [
+            "live"
+        ]);
     }
 
     function testAuth() public {

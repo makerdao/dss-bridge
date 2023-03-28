@@ -182,6 +182,7 @@ abstract contract DomainHost {
         else if (what == "grain") grain = data;
         else if (what == "ddai") ddai = data;
         else if (what == "dsin") dsin = data;
+        else if (what == "live") live = data;
         else revert("DomainHost/file-unrecognized-param");
         emit File(what, data);
     }
