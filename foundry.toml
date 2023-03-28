@@ -1,0 +1,15 @@
+[profile.default]
+src = 'src'
+out = 'out'
+libs = ['lib']
+remappings = [
+    'dss-test/=lib/dss-test/src/',
+    'xdomain-dss/=lib/xdomain-dss/src/',
+    'dss-teleport/=lib/dss-teleport/src/'
+]
+fs_permissions = [
+    { access = "read", path = "./script/input/"},
+    { access = "read", path = "./out/"}
+]
+
+# See more config options https://github.com/gakonst/foundry/tree/master/config

@@ -1,0 +1,124 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+pragma solidity ^0.8.15;
+
+import { ArbitrumDomain } from "dss-test/domains/ArbitrumDomain.sol";
+
+import "./IntegrationBase.t.sol";
+
+import { ArbitrumDomainHost } from "../../domains/arbitrum/ArbitrumDomainHost.sol";
+import { ArbitrumDomainGuest } from "../../domains/arbitrum/ArbitrumDomainGuest.sol";
+
+abstract contract ArbitrumIntegrationTest is IntegrationBaseTest {
+
+    function deployHost(address guestAddr) internal virtual override returns (BridgeInstance memory) {
+        return DssBridge.deployArbitrumHost(
+            address(this),
+            hostDomain.readConfigAddress("admin"),
+            guestDomain.readConfigBytes32("ilk"),
+            address(dss.daiJoin),
+            guestDomain.readConfigAddress("escrow"),
+            address(teleport.router),
+            address(ArbitrumDomain(address(guestDomain)).inbox()),
+            guestAddr
+        );
+    }
+
+    function deployGuest(
+        DssInstance memory dss,
+        address hostAddr
+    ) internal virtual override returns (BridgeInstance memory) {
+        return DssBridge.deployArbitrumGuest(
+            address(this),
+            guestDomain.readConfigAddress("admin"),
+            address(dss.daiJoin),
+            address(claimToken),
+            address(rteleport.router),
+            address(ArbitrumDomain(address(guestDomain)).arbSys()),
+            hostAddr
+        );
+    }
+
+    function initHost() internal virtual override {
+        ArbitrumDomainHost _host = ArbitrumDomainHost(address(host));
+        _host.filegl("glLift", 1_000_000);
+        _host.filegl("glRectify", 1_000_000);
+        _host.filegl("glCage", 1_000_000);
+        _host.filegl("glExit", 1_000_000);
+        _host.filegl("glDeposit", 1_000_000);
+        _host.filegl("glInitializeRegisterMint", 1_000_000);
+        _host.filegl("glInitializeSettle", 1_000_000);
+    }
+
+    function initGuest() internal virtual override {
+    }
+
+    function hostLift(uint256 wad) internal virtual override {
+        ArbitrumDomainHost(address(host)).lift{value:1 ether}(wad, 1 ether, 0);
+    }
+
+    function hostRectify(uint256 _maxAmount) internal virtual override {
+        ArbitrumDomainHost(address(host)).rectify{value:1 ether}(_maxAmount, 1 ether, 0);
+    }
+
+    function hostCage() internal virtual override {
+        ArbitrumDomainHost(address(host)).cage{value:1 ether}(1 ether, 0);
+    }
+
+    function hostExit(address usr, uint256 wad) internal virtual override {
+        ArbitrumDomainHost(address(host)).exit{value:1 ether}(usr, wad, 1 ether, 0);
+    }
+
+    function hostDeposit(address to, uint256 amount) internal virtual override {
+        ArbitrumDomainHost(address(host)).deposit{value:1 ether}(to, amount, 1 ether, 0);
+    }
+
+    function hostInitializeRegisterMint(TeleportGUID memory teleport) internal virtual override {
+        ArbitrumDomainHost(address(host)).initializeRegisterMint{value:1 ether}(teleport, 1 ether, 0);
+    }
+
+    function hostInitializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal virtual override {
+        ArbitrumDomainHost(address(host)).initializeSettle{value:1 ether}(sourceDomain, targetDomain, 1 ether, 0);
+    }
+
+    function guestSurplus() internal virtual override {
+        ArbitrumDomainGuest(address(guest)).surplus();
+    }
+
+    function guestDeficit() internal virtual override {
+        ArbitrumDomainGuest(address(guest)).deficit();
+    }
+
+    function guestTell() internal virtual override {
+        ArbitrumDomainGuest(address(guest)).tell();
+    }
+
+    function guestWithdraw(address to, uint256 amount) internal virtual override {
+        ArbitrumDomainGuest(address(guest)).withdraw(to, amount);
+    }
+
+    function guestInitializeRegisterMint(TeleportGUID memory teleport) internal virtual override {
+        ArbitrumDomainGuest(address(guest)).initializeRegisterMint(teleport);
+    }
+
+    function guestInitializeSettle(bytes32 sourceDomain, bytes32 targetDomain) internal virtual override {
+        ArbitrumDomainGuest(address(guest)).initializeSettle(sourceDomain, targetDomain);
+    }
+
+}
+
+contract ArbitrumOneIntegrationTest is ArbitrumIntegrationTest {
+
+    function setupGuestDomain() internal virtual override returns (BridgedDomain) {
+        return new ArbitrumDomain(config, getRelativeChain("arbitrum_one"), hostDomain);
+    }
+
+}
+
+contract ArbitrumNovaIntegrationTest is ArbitrumIntegrationTest {
+
+    function setupGuestDomain() internal virtual override returns (BridgedDomain) {
+        return new ArbitrumDomain(config, getRelativeChain("arbitrum_nova"), hostDomain);
+    }
+
+}
